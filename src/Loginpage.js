@@ -25,12 +25,6 @@ function Loginpage() {
 
       {/* Login Container */}
       <div className="login-container">
-        <div className="signup-text-container">
-          <p className="signup-text">
-            Don't have an account? <a href="/signup">Sign Up</a>
-          </p>
-        </div>
-
         <h2 className="login-title">LOG IN</h2>
 
         <div className="login-box">
