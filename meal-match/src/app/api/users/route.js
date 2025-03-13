@@ -1,7 +1,6 @@
 import connect from '@/lib/mongodb';
 import User from '@/models/Users';
 import { NextResponse } from 'next/server';
-import { Types } from 'mongoose';
 
 export const POST = async (request) => {
     try {
