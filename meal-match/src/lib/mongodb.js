@@ -1,29 +1,30 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
-if (!MONGODB_URI) {
-    throw new Error('Please define the MONGODB_URI environment vairable');
-}
+const connect = async () => {
+  const connectionState = mongoose.connection.readyState;
 
-let cached = global.mongoose;
-if (!cached) {
-    cached = global.mongoose = { conn: null, promise: null };
-}
+  if (connectionState === 1) {
+    console.log("Already connected");
+    return;
+  }
 
-async function connect() {
-    if (cached.conn) {
-        return cached.conn;
-    }
+  if (connectionState === 2) {
+    console.log("Connecting...");
+    return;
+  }
 
-    if (!cached.promise) {
-
-        cached.promise = mongoose.connect(MONGODB_URI).then((mongoose) => {
-            return mongoose;
-        });
-    }
-    cached.conn = await cached.promise;
-    return cached.conn;
-}
+  try {
+    mongoose.connect(MONGODB_URI, {
+      dbName: "next14restapi",
+      bufferCommands: true,
+    });
+    console.log("Connected");
+  } catch (err) {
+    console.log("Error: ", err);
+    throw new Error("Error: ", err);
+  }
+};
 
 export default connect;

@@ -4,14 +4,14 @@ import jwt from 'jsonwebtoken';
 
 
 const UserSchema = new mongoose.Schema({
-    "username": {
+    username: {
         type: String,
         trim: true,
         required : [true, 'Please provide a username'],
         maxlength: 32
 
     },
-    "email": {
+    email: {
         type: String,
         trim: true,
         required: [true, 'Please provide your email address'],
@@ -21,7 +21,7 @@ const UserSchema = new mongoose.Schema({
            'Please provide a valid email address'
         ]
     },
-    "password": {
+    password: {
         type: String,
         trim: true,
         required: [true, 'Please provide a password'],
@@ -31,8 +31,8 @@ const UserSchema = new mongoose.Schema({
            'Password must contain at least 1 uppercase letter, 1 lowercase letter, 1 number and a special character'
         ]
     },
-    "dietary_preferences": {type: String},
-    "allergies": {type: String},
+    dietary_preferences: {type: String, required: false},
+    allergies: {type: String, required: false},
 }, {timestamps: true});
 
 UserSchema.pre('save', async function(next){
@@ -51,4 +51,6 @@ UserSchema.methods.jwtGenerateToken = function(){
 }
 
 
-module.exports = mongoose.model('Users', UserSchema);
+const User = mongoose.models.User || mongoose.model("User", UserSchema);
+
+export default User;

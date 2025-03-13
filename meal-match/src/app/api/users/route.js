@@ -1,18 +1,23 @@
 import connect from '@/lib/mongodb';
 import User from '@/models/Users';
 import { NextResponse } from 'next/server';
+import { Types } from 'mongoose';
 
-export async function POST(req) {
+export const POST = async (request) => {
     try {
-        await connect();
-        const { username, email, password, dietary_preferences, allergies } = req.json();
-        const user = await User.create({ username, email, password, dietary_preferences, allergies });
-        await user.save();
-        return NextResponse.json({ message: 'User created successfully' }, { status: 201 });
-
+      const body = await request.json();
+      await connect();
+      const newUser = new User(body);
+      await newUser.save();
+  
+      return new NextResponse(
+        JSON.stringify({ message: "User is created", user: newUser }),
+        { status: 200 }
+      );
+    } catch (error) {
+      console.error(error);
+      return new NextResponse("Error in creating user" + error.message, {
+        status: 500,
+      });
     }
-    catch (error) {
-        console.error(error);
-        return NextResponse.json({ message: 'Error creating user' }, { status: 500 });
-    }
-}
+  };
