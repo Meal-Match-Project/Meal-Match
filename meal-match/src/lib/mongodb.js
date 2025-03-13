@@ -17,7 +17,7 @@ const connect = async () => {
 
   try {
     mongoose.connect(MONGODB_URI, {
-      dbName: "next14restapi",
+      dbName: "meal-match-database",
       bufferCommands: true,
     });
     console.log("Connected");
