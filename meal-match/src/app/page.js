@@ -1,7 +1,7 @@
-import HomepageBanner from "../src/app/components/HompageBanner";
-import banner1 from "../public/mixnmatch1.jpg";
-import banner2 from "../public/mixnmatch2.jpg";
-import Navbar from "../src/app/components/Navbar";
+import HomepageBanner from "@/app/components/HompageBanner";
+import banner1 from "@/../public/mixnmatch1.jpg";
+import banner2 from "@/../public/mixnmatch2.jpg";
+import Navbar from "@/app/components/Navbar";
 
 
 export default function Home() {

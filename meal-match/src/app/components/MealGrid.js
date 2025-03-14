@@ -112,12 +112,12 @@ function DroppableMeal({ id, items, onRemoveComponent, onAddMiniComponent, onMea
           <div
             key={index}
             className={`mt-2 p-1 rounded flex justify-between items-center ${
-              item.type === 'component' ? 'bg-gradient-to-r from-red-400 to-orange-500 rounded-lg shadow-lg hover:scale-105 transition-transform duration-300 ease-in-out' : 'bg-gray-300 italic'
+              item.type === 'component' ? 'bg-gradient-to-r from-orange-600 to-orange-500 text-white font-semibold rounded-lg shadow-lg hover:scale-105 transition-transform duration-300 ease-in-out' : 'bg-blue-100 italic'
             }`}
           >
             <span>{item.name}</span>
             <button
-              className="text-red-600 font-bold px-1"
+              className={`font-bold px-1 ${item.type === 'component' ? 'text-white' : ''}`}
               onClick={() => onRemoveComponent(id, index, item.name)}
             >
               ✕

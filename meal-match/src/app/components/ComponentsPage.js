@@ -46,7 +46,7 @@ export default function ComponentsPage() {
       <h1 className="text-2xl font-bold mb-4">Components</h1>
       {['thisWeek', 'saved'].map((category) => (
         <div key={category} className="mb-6">
-          <h2 className="text-lg font-semibold bg-gray-300 p-2">{category === 'thisWeek' ? 'THIS WEEK' : 'SAVED'}</h2>
+          <h2 className="text-lg font-semibold bg-blue-100 p-2">{category === 'thisWeek' ? 'THIS WEEK' : 'SAVED'}</h2>
           <div className="bg-white shadow-md rounded-md">
             {components[category].map((component) => (
               <div key={component.name} className="flex justify-between p-2 border-b last:border-none">
