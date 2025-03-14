@@ -19,18 +19,37 @@ export default function ComponentsPage() {
 
   const [selectedComponent, setSelectedComponent] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
 
   const handleEditClick = (component) => {
     setSelectedComponent(component);
+    setIsAdding(false);
+    setIsModalOpen(true);
+  };
+
+  const handleAddClick = () => {
+    setSelectedComponent({ name: '', servings: '', prepTime: '', ingredients: [] }); // Empty component for new entry
+    setIsAdding(true);
     setIsModalOpen(true);
   };
 
   const handleSaveComponent = (updatedComponent) => {
-    setComponents((prev) => ({
-      ...prev,
-      thisWeek: prev.thisWeek.map(comp => comp.name === updatedComponent.name ? updatedComponent : comp),
-      saved: prev.saved.map(comp => comp.name === updatedComponent.name ? updatedComponent : comp)
-    }));
+    setComponents((prev) => {
+      if (isAdding) {
+        // Adding new component
+        return {
+          ...prev,
+          thisWeek: [...prev.thisWeek, updatedComponent] // Add to "This Week"
+        };
+      } else {
+        // Editing existing component
+        return {
+          ...prev,
+          thisWeek: prev.thisWeek.map(comp => comp.name === updatedComponent.name ? updatedComponent : comp),
+          saved: prev.saved.map(comp => comp.name === updatedComponent.name ? updatedComponent : comp)
+        };
+      }
+    });
     setIsModalOpen(false);
   };
 
@@ -56,13 +75,28 @@ export default function ComponentsPage() {
                 </button>
               </div>
             ))}
+            {/* Add Component Button */}
+            {category === 'thisWeek' && (
+              <div className="flex justify-center p-2 border-t">
+                <button onClick={handleAddClick} className="text-blue-600">
+                  + Add Component
+                </button>
+              </div>
+            )}
           </div>
         </div>
       ))}
-      {isModalOpen && 
-          <div className="relative">
-            <ComponentModal component={selectedComponent} onSave={handleSaveComponent} onDelete={handleDeleteComponent} onClose={() => setIsModalOpen(false)} />
-          </div>}
+      {isModalOpen && (
+        <div className="relative">
+          <ComponentModal 
+            component={selectedComponent} 
+            onSave={handleSaveComponent} 
+            onDelete={handleDeleteComponent} 
+            onClose={() => setIsModalOpen(false)} 
+            isAdding={isAdding}
+          />
+        </div>
+      )}
     </div>
   );
 }

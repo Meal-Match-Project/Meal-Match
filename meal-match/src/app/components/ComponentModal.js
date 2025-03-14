@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { Pencil } from 'lucide-react';
 
-export default function ComponentModal({ component, onSave, onDelete, onClose }) {
+export default function ComponentModal({ component, onSave, onDelete, onClose, isAdding }) {
   const [editedComponent, setEditedComponent] = useState({ ...component });
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(isAdding);
 
   const handleChange = (e, field) => {
     setEditedComponent({ ...editedComponent, [field]: e.target.value });
@@ -18,6 +18,7 @@ export default function ComponentModal({ component, onSave, onDelete, onClose })
             <input
               type="text"
               value={editedComponent.name}
+              placeholder="Component Name"
               onChange={(e) => handleChange(e, 'name')}
               className="text-xl font-bold border-b-2 border-gray-300 w-full"
             />
