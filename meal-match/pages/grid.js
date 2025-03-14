@@ -1,6 +1,6 @@
 'use client';
 
-import LoggedInNav from "../../components/LoggedInNav";
+import LoggedInNav from "../src/app/components/LoggedInNav";
 import MealGrid from "@/app/components/Grid";
 
 export default function WeeklyGrid() {
