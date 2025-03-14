@@ -8,7 +8,7 @@ export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <nav className="bg-white shadow-md">
+    <nav className="bg-white shadow-md sticky top-0 z-50">
       <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center">
           <div className="flex items-center">
@@ -16,14 +16,17 @@ export default function Navbar() {
                 Meal Match
             </span>
           </div>
-          <div className="hidden md:flex space-x-6">
-            <NavLink href="/my-week" label="My Week" />
-            <NavLink href="/components" label="Components" />
+          <div className="hidden md:flex ml-auto space-x-12">
+            <NavLink href="/dashboard/grid" label="My Week" />
+            <NavLink href="/dashboard/components" label="Components" />
             <NavLink href="/templates" label="Templates" />
             <NavLink href="/favorites" label="Favorites" />
+            <div className="flex items-center space-x-4">
+                <User className="w-6 h-6 cursor-pointer" />
+            </div>
           </div>
           <div className="flex items-center space-x-4">
-            <User className="w-6 h-6 cursor-pointer" />
+            <User className="md:hidden w-6 h-6 cursor-pointer" />
             <button className="md:hidden" onClick={() => setIsOpen(!isOpen)}>
               {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>

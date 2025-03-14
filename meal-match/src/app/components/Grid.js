@@ -16,10 +16,20 @@ export default function MealPlanner() {
   const [savedMeals, setSavedMeals] = useState({});
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedMeal, setSelectedMeal] = useState(null);
+  const [selectedMealComponents, setSelectedMealComponents] = useState([]);
 
   const handleMealClick = (mealId) => {
     setSelectedMeal(mealId);
+    setSelectedMealComponents(mealPlans[mealId] || []); // Get components added to the meal
     setModalOpen(true);
+  };
+
+  const handleClearMeal = (mealId) => {
+    setMealPlans((prev) => {
+      const updatedPlans = { ...prev };
+      delete updatedPlans[mealId];
+      return updatedPlans;
+    });
   };
 
   const handleSaveMeal = (mealId, title, notes) => {
@@ -72,7 +82,7 @@ export default function MealPlanner() {
   const handleAddMiniComponent = (mealId, miniComponent) => {
     setMealPlans((prev) => ({
       ...prev,
-      [mealId]: [...(prev[mealId] || []), { name: miniComponent, type: 'mini' }],
+      [mealId]: [{ name: miniComponent, type: 'mini' }, ...(prev[mealId] || []) ],
     }));
   };
 
@@ -85,12 +95,14 @@ export default function MealPlanner() {
           onRemoveComponent={handleRemoveComponent} 
           onAddMiniComponent={handleAddMiniComponent} 
           onMealClick={handleMealClick}
+          onClearMeal={handleClearMeal}
         />
         <SaveMealModal
           isOpen={modalOpen}
           onClose={() => setModalOpen(false)}
           onSave={handleSaveMeal}
           mealId={selectedMeal}
+          mealComponents={selectedMealComponents}
         />
       </div>
       <DragOverlay>

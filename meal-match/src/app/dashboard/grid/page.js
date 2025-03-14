@@ -7,7 +7,10 @@ export default function WeeklyGrid() {
     return(
         <>
             <LoggedInNav />
-            <MealGrid />
+            <main className="relative">
+                <MealGrid />
+            </main>
+            
         </>
     );
 }
