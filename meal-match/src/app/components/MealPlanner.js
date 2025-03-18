@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { DndContext, DragOverlay } from '@dnd-kit/core';
 import ComponentsSidebar from './ComponentsSidebar';
 import MealGrid from './MealGrid';
-import SaveMealModal from './SaveMealModal';
+import SaveMealModal from '@/app/components/modals/SaveMealModal';
 
 export default function MealPlanner() {
   const componentNames = ['Garlic-herb chicken', 'Jasmine rice', 'Steamed broccoli', 'Spaghetti'];

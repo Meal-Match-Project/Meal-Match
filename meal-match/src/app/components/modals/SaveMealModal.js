@@ -10,7 +10,7 @@ export default function SaveMealModal({ isOpen, onClose, onSave, mealId, mealCom
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
       <div className="bg-white p-6 rounded-lg shadow-lg w-96">
-        <h2 className="text-xl font-bold mb-4">Save Meal</h2>
+        <h2 className="text-xl font-bold mb-4">Add Meal to Favorites</h2>
 
         {/* List Components Added to the Meal */}
         <div className="mb-3">
@@ -55,7 +55,7 @@ export default function SaveMealModal({ isOpen, onClose, onSave, mealId, mealCom
               onClose();
             }}
           >
-            Save
+            Favorite
           </button>
         </div>
       </div>

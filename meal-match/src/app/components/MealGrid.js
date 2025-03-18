@@ -2,6 +2,7 @@
 
 import { useDroppable } from '@dnd-kit/core';
 import { useEffect, useRef, useState } from 'react';
+import { Heart } from 'lucide-react';
 
 export default function MealGrid({ mealPlans, onRemoveComponent, onAddMiniComponent, onMealClick, onClearMeal}) {
   const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -68,13 +69,14 @@ function DroppableMeal({ id, items, onRemoveComponent, onAddMiniComponent, onMea
         {showOptions && (
           <div ref={optionsRef} className="absolute top-8 right-0 bg-white border shadow-lg rounded-lg py-1 w-36 z-10">
             <button 
-              className="w-full text-left px-4 py-2 hover:bg-gray-100" 
+              className="w-full text-left px-4 py-2 flex items-center gap-2 hover:bg-gray-100" 
               onClick={() => {
                 onMealClick(id);
                 setShowOptions(false);
               }}
             >
-              Save Meal
+              Favorite
+              <Heart className="w-4 h-4" />
             </button>
             <button 
               className="w-full text-left px-4 py-2 hover:bg-gray-100 text-red-600" 

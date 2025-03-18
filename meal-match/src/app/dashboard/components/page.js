@@ -1,20 +1,7 @@
-'use client';
-
 import LoggedInNav from "../../components/LoggedInNav";
-import FoodList from "@/app/components/FoodList";
 import ComponentsPage from "@/app/components/ComponentsPage";
 
 export default function WeeklyGrid() {
-    const items = [
-        { id: 1, name: "Garlic-herb chicken", type: "component" },
-        { id: 2, name: "Jasmine rice", type: "component" },
-        { id: 3, name: "Steamed broccoli", type: "component" },
-        { id: 4, name: "Spaghetti", type: "component" },
-    ];
-
-    function handleMenuClick() {
-        return;
-    }
     return(
         <>
             <LoggedInNav />

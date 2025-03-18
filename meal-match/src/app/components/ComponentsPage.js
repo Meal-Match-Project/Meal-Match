@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import ComponentModal from './ComponentModal';
+import ComponentModal from '@/app/components/modals/ComponentModal';
 
 export default function ComponentsPage() {
   const [components, setComponents] = useState({
