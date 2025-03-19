@@ -1,7 +1,9 @@
+'use client';
+
 import { useState } from 'react';
 import { Pencil, HeartOff, X } from 'lucide-react';
 
-export default function FavoritesModal({ meal, onSave, onDelete, onClose }) {
+export default function FavoritesModal({ meal, onSave, onDelete, onClose, weeklyComponents, onAddMeal }) {
   const [editedMeal, setEditedMeal] = useState({ ...meal });
   const [isEditing, setIsEditing] = useState(false);
 
@@ -70,12 +72,29 @@ export default function FavoritesModal({ meal, onSave, onDelete, onClose }) {
               </div>
             ) : (
               <div className="space-y-2 my-4">
-                {editedMeal.components.map((component, index) => (
-                  <div key={index} className="rounded-md w-3/4 text-white bg-orange-600 px-4 py-2 text-md">{component}</div>
-                ))}
-              </div>
-            )}
-          </div>
+                {editedMeal.components.map((component, index) => {
+                  const isInWeekly = weeklyComponents.includes(component);
+                  return (
+                    <div 
+                      key={index} 
+                      className={`rounded-md w-3/4 px-4 py-2 text-md flex items-center justify-between 
+                        ${isInWeekly ? 'bg-orange-600 text-white' : 'bg-orange-300 text-black'}`}
+                    >
+                      <span>{component}</span>
+                      {!isInWeekly && (
+                        <button 
+                          onClick={() => onAddMeal([component])} 
+                          className="ml-2 bg-white text-orange-800 px-2 py-1 rounded"
+                        >
+                          Add
+                        </button>
+                      )}
+                    </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
 
           {/* Toppings */}
           <div>

@@ -119,7 +119,7 @@ export default function ComponentModal({ component, onSave, onDelete, onClose, i
                     Cancel
                 </button>
                 <button onClick={() => { onSave(editedComponent); setIsEditing(false); }} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md transition">
-                    Save
+                    Add
                 </button>
                 </>
             )}
