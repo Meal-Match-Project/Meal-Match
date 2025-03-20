@@ -100,7 +100,7 @@ export default function ComponentsPage() {
 
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
-      <h1 className="text-2xl font-bold mb-4">Components</h1>
+      <h1 className="text-2xl font-bold text-orange-600 mb-4">Components</h1>
       {['thisWeek', 'saved'].map((category) => (
         <div key={category} className="w-3/4 mx-auto my-6">
           <h2 className="text-lg font-semibold bg-blue-100 p-2">{category === 'thisWeek' ? 'THIS WEEK' : 'SAVED'}</h2>

@@ -136,7 +136,50 @@ export default function FavoritesModal({ meal, onSave, onDelete, onClose, weekly
               </div>
             )}
           </div>
-
+          {/* Cuisine */}
+          <div>
+            <h3 className="text-md font-semibold">Cuisine</h3>
+            {isEditing ? (
+              <textarea
+                value={editedMeal.notes}
+                onChange={(e) => handleChange(e, 'cuisine')}
+                className="border p-1 w-full rounded-md"
+              />
+            ) : (
+              <p className="text-md mb-4">{editedMeal.notes || 'Not specified.'}</p>
+            )}
+          </div>
+          {/* Nutrition */}
+          <div>
+            <h3 className="text-md font-semibold">Nutrition Info</h3>
+            {isEditing ? (
+              <textarea
+                value={editedMeal.notes}
+                onChange={(e) => handleChange(e, 'nutrition')}
+                className="border p-1 w-full rounded-md"
+              />
+            ) : (
+              <p className="text-md mb-4">{editedMeal.notes || 'Not specified.'}</p>
+            )}
+          </div>
+          {/* Meal Type */}
+          <div>
+            <h3 className="text-md font-semibold">Meal Type</h3>
+            {isEditing ? (
+              <select
+                value={editedMeal.type}
+                onChange={(e) => handleChange(e, 'type')}
+                className="border p-1 w-full rounded-md"
+              >
+                <option value="">Select Meal Type</option>
+                <option value="Breakfast">Breakfast</option>
+                <option value="Lunch">Lunch</option>
+                <option value="Dinner">Dinner</option>
+              </select>
+            ) : (
+              <p className="text-md mb-4">{editedMeal.type || 'Not specified.'}</p>
+            )}
+          </div>
           {/* Notes */}
           <div>
             <h3 className="text-md font-semibold">Notes</h3>

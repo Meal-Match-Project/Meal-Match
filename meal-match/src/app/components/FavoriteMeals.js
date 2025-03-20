@@ -48,13 +48,13 @@ export default function FavoriteMeals({ weeklyComponents, onAddMeal }) {
 
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
-      <h1 className="text-2xl font-bold mb-8">Favorite Meals</h1>
+      <h1 className="text-2xl text-orange-600 font-bold mb-8">Favorite Meals</h1>
       
       {/* All Components Match */}
       {allMatches.length > 0 && (
         <>
-          <h2 className="text-xl font-semibold mb-2">All Components Match</h2>
-          <div className="bg-white shadow-md rounded-md mb-4">
+          <h2 className="text-xl font-semibold w-3/4 mx-auto my-4">All Components Match</h2>
+          <div className="bg-white shadow-md mx-auto w-3/4 rounded-md my-4">
             {allMatches.map((meal) => (
               <div key={meal.name} className="flex justify-between p-2 border-b last:border-none">
                 <span>{meal.name}</span>
@@ -70,8 +70,8 @@ export default function FavoriteMeals({ weeklyComponents, onAddMeal }) {
       {/* Some Components Match */}
       {someMatches.length > 0 && (
         <>
-          <h2 className="text-xl font-semibold mb-2">Some Components Match</h2>
-          <div className="bg-white shadow-md rounded-md mb-4">
+          <h2 className="text-xl font-semibold w-3/4 mx-auto my-4">Some Components Match</h2>
+          <div className="bg-white shadow-md rounded-md mx-auto w-3/4 my-4">
             {someMatches.map((meal) => (
               <div key={meal.name} className="flex justify-between p-2 border-b last:border-none">
                 <span>{meal.name}</span>
