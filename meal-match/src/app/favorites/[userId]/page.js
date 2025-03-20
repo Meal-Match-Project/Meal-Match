@@ -1,12 +1,12 @@
+import FavoriteMeals from "@/app/components/FavoriteMeals";
 import LoggedInNav from "@/app/components/LoggedInNav";
-import IngredientsPage from "@/app/components/IngredientsPage";
 
-export default function Ingredients() {
+export default function Favorites() {
     return(
         <>
             <LoggedInNav />
             <main className="relative">
-                <IngredientsPage />
+                <FavoriteMeals />
             </main>
             
         </>

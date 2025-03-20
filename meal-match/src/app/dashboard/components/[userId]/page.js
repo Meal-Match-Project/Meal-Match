@@ -1,4 +1,4 @@
-import LoggedInNav from "../../components/LoggedInNav";
+import LoggedInNav from "../../../components/LoggedInNav";
 import ComponentsPage from "@/app/components/ComponentsPage";
 
 export default function WeeklyGrid() {

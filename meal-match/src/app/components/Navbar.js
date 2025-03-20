@@ -11,7 +11,12 @@ const Navbar = () => {
                 <a href="#" className="hover:text-orange-500">ABOUT</a>
                 <a href="#" className="hover:text-orange-500">TEMPLATES</a>
                 <a href="#" className="hover:text-orange-500">PRICING</a>
-                <CustomButton className="bg-orange-500 text-white hover:bg-orange-500">LOGIN</CustomButton>
+                <Link href="/login">
+                    <CustomButton className="bg-orange-500 text-white hover:bg-orange-500">
+                        LOGIN
+                    </CustomButton>
+                </Link>
+                
                 <Link href="/register">
                     <CustomButton className="border border-gray-400 hover:bg-gray-200">
                         SIGN UP

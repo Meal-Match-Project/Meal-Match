@@ -1,25 +1,35 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Menu, X, User, ChevronDown } from 'lucide-react';
 
 export default function Navbar() {
+  const { userId: urlUserId } = useParams(); // Get userId from URL
+  const [userId, setUserId] = useState(null);
   const [isMyWeekOpen, setIsMyWeekOpen] = useState(false);
   const [isMyWeekDropdownOpen, setIsMyWeekDropdownOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [hasMounted, setHasMounted] = useState(false);
 
-  // Create refs for the dropdown containers
+  // Refs for dropdowns
   const myWeekDropdownRef = useRef(null);
   const profileDropdownRef = useRef(null);
   const mobileDropdownRef = useRef(null);
 
-  // Prevents hydration mismatch
+  // Load userId from URL or localStorage
   useEffect(() => {
     setHasMounted(true);
-  }, []);
+    const storedUserId = localStorage.getItem("userId");
+
+    if (urlUserId) {
+      setUserId(urlUserId);
+      localStorage.setItem("userId", urlUserId);
+    } else if (storedUserId) {
+      setUserId(storedUserId);
+    }
+  }, [urlUserId]);
 
   // Close dropdowns if clicking outside
   useEffect(() => {
@@ -40,7 +50,7 @@ export default function Navbar() {
     };
   }, []);
 
-  if (!hasMounted) return null; // Avoid rendering before mount
+  if (!hasMounted || !userId) return null; // Prevent hydration issues
 
   return (
     <nav className="bg-white shadow-md sticky top-0 z-50">
@@ -55,7 +65,7 @@ export default function Navbar() {
           {/* Desktop Navigation */}
           <div className="hidden md:flex ml-auto space-x-12 items-center">
             <div className="relative" ref={myWeekDropdownRef}>
-              {/* My Week Button (Click to Open) */}
+              {/* My Week Button */}
               <button 
                 className="text-gray-700 hover:text-gray-900 flex items-center gap-1"
                 onClick={() => setIsMyWeekDropdownOpen(!isMyWeekDropdownOpen)}
@@ -63,20 +73,21 @@ export default function Navbar() {
                 My Week <ChevronDown className={`w-4 h-4 transition-transform ${isMyWeekDropdownOpen ? "rotate-180" : ""}`} />
               </button>
 
-              {/* Dropdown for Desktop (Click to Toggle) */}
+              {/* Dropdown for Desktop */}
               {isMyWeekDropdownOpen && (
                 <div className="absolute left-0 mt-2 w-48 bg-white shadow-lg rounded-md border">
-                  <DropdownLink href="/dashboard/grid" label="Meal Planner" />
-                  <DropdownLink href="/dashboard/ingredients" label="Ingredients" />
+                  <DropdownLink href={`/dashboard/grid/${userId}`} label="Meal Planner" />
+                  <DropdownLink href={`/dashboard/ingredients/${userId}`} label="Ingredients" />
                 </div>
               )}
             </div>
             
-            <NavLink href="/dashboard/components" label="Components" />
-            <NavLink href="/templates" label="Templates" />
-            <NavLink href="/favorites" label="Favorites" />
+            <NavLink href={`/dashboard/components/${userId}`} label="Components" />
+            <NavLink href={`/templates/${userId}`} label="Templates" />
+            <NavLink href={`/favorites/${userId}`} label="Favorites" />
+            
             <div className="relative" ref={profileDropdownRef}>
-              {/* Profile Button (Click to Open) */}
+              {/* Profile Button */}
               <button 
                 className="text-gray-700 hover:text-gray-900 flex items-center gap-1"
                 onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
@@ -84,10 +95,10 @@ export default function Navbar() {
                 <User className="w-6 h-6 cursor-pointer" />
               </button>
 
-              {/* Dropdown for Desktop (Click to Toggle) */}
+              {/* Profile Dropdown */}
               {isProfileDropdownOpen && (
                 <div className="absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-md border">
-                  <DropdownLink href="/profile" label="Profile" />
+                  <DropdownLink href={`/profile/${userId}`} label="Profile" />
                   <DropdownLink color="text-red-500" href="/" label="Log Out" />
                 </div>
               )}
@@ -117,14 +128,14 @@ export default function Navbar() {
             
             {isMyWeekDropdownOpen && (
               <div className="pl-4 border-l border-gray-300">
-                <MobileNavLink href="/dashboard/grid" label="Meal Planner" />
-                <MobileNavLink href="/dashboard/ingredients" label="Ingredients" />
+                <MobileNavLink href={`/dashboard/grid/${userId}`} label="Meal Planner" />
+                <MobileNavLink href={`/dashboard/ingredients/${userId}`} label="Ingredients" />
               </div>
             )}
           </div>
-          <MobileNavLink href="/dashboard/components" label="Components" />
-          <MobileNavLink href="/templates" label="Templates" />
-          <MobileNavLink href="/favorites" label="Favorites" />
+          <MobileNavLink href={`/dashboard/components/${userId}`} label="Components" />
+          <MobileNavLink href={`/templates/${userId}`} label="Templates" />
+          <MobileNavLink href={`/favorites/${userId}`} label="Favorites" />
           <MobileNavLink href="/" label="Log Out" color="text-red-500" />
         </div>
       )}
@@ -132,6 +143,7 @@ export default function Navbar() {
   );
 }
 
+// Components for Links
 function NavLink({ href, label }) {
   return (
     <Link href={href} className="text-gray-700 hover:text-gray-900">
@@ -147,7 +159,6 @@ function DropdownLink({ href, label, color }) {
     </Link>
   );
 }
-
 
 function MobileNavLink({ href, label, color }) {
   return (
