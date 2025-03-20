@@ -34,10 +34,11 @@ export default function MealPlanner() {
   const [componentCounts, setComponentCounts] = useState([]);
   const [mealPlans, setMealPlans] = useState({});
   const [activeItem, setActiveItem] = useState(null);
-  const [savedMeals, setSavedMeals] = useState({});
+  const [savedMeals, setSavedMeals] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedMeal, setSelectedMeal] = useState(null);
   const [selectedMealComponents, setSelectedMealComponents] = useState([]);
+  const [selectedMealToppings, setSelectedMealToppings] = useState([]);
 
   const [favoriteMeals] = useState([
     {
@@ -59,10 +60,9 @@ export default function MealPlanner() {
       const storedComponents = localStorage.getItem(`componentsData-${userId}`);
       if (storedComponents) {
         const parsedComponents = JSON.parse(storedComponents).thisWeek || [];
-        const mergedComponents = [...defaultComponents, ...parsedComponents];
 
-        setComponentNames(mergedComponents.map((comp) => comp.name));
-        setComponentCounts(mergedComponents.map((comp) => comp.servings || 1));
+        setComponentNames(parsedComponents.map((comp) => comp.name));
+        setComponentCounts(parsedComponents.map((comp) => comp.servings || 1));
       } else {
         setComponentNames(defaultComponents.map((comp) => comp.name));
         setComponentCounts(defaultComponents.map((comp) => comp.servings));
@@ -77,7 +77,16 @@ export default function MealPlanner() {
       // Load saved meals
       const storedSavedMeals = localStorage.getItem(`savedMeals-${userId}`);
       if (storedSavedMeals) {
-        setSavedMeals(JSON.parse(storedSavedMeals));
+        try {
+          const parsed = JSON.parse(storedSavedMeals);
+          if (Array.isArray(parsed)) {
+            setSavedMeals(parsed);
+          } else {
+            setSavedMeals([]);
+          }
+        } catch {
+          setSavedMeals([]);
+        }
       }
     }
   }, [userId]);
@@ -98,7 +107,12 @@ export default function MealPlanner() {
 
   const handleMealClick = (mealId) => {
     setSelectedMeal(mealId);
-    setSelectedMealComponents(mealPlans[mealId] || []);
+    const items = mealPlans[mealId] || [];
+
+    // Separate items into components vs. mini
+    setSelectedMealComponents(items.filter(item => item.type === 'component'));
+    setSelectedMealToppings(items.filter(item => item.type === 'mini'));
+  
     setModalOpen(true);
   };
 
@@ -110,11 +124,11 @@ export default function MealPlanner() {
     });
   };
 
-  const handleSaveMeal = (mealId, title, notes) => {
-    setSavedMeals((prev) => ({
+  const handleSaveMeal = (title, components, toppings, notes) => {
+    setSavedMeals((prev) => ([
       ...prev,
-      [mealId]: { title, notes },
-    }));
+      { name: title, components, toppings, notes },
+    ]));
   };
 
   const handleDragStart = (event) => {
@@ -186,7 +200,7 @@ export default function MealPlanner() {
       [mealId]: [{ name: miniComponent, type: 'mini' }, ...(prev[mealId] || [])],
     }));
   };
-
+  console.log(componentNames)
   return (
     <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="flex h-[80vh] bg-gray-100 p-4 rounded-lg shadow-lg">
@@ -208,6 +222,7 @@ export default function MealPlanner() {
           onSave={handleSaveMeal}
           mealId={selectedMeal}
           mealComponents={selectedMealComponents}
+          mealToppings={selectedMealToppings}
         />
       </div>
       <DragOverlay>

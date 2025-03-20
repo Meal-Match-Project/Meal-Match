@@ -1,20 +1,116 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useParams } from 'next/navigation';
 import FavoritesModal from '@/app/components/modals/FavoritesModal';
 
-export default function FavoriteMeals({ weeklyComponents, onAddMeal }) {
-  const [favorites, setFavorites] = useState(() => {
-    const initial = [
-      { name: 'Tuna salad wrap', components: ['Crepes', 'Mashed sweet potato', 'Tuna salad', 'Baby spinach'], toppings: ['Roasted red pepper', 'Cucumber']},
-      { name: 'Roasted red pepper chickpea salad', components: ['Crisped chickpeas', 'Balsamic vinaigrette', 'Pickled red onions', 'Baby spinach'], toppings: ['Roasted red pepper', 'Diced cucumber', 'Feta']},
-      { name: 'Broccoli and chickpea stuffed sweet potato', components: ['Baked sweet potato', 'Roasted broccoli', 'Crisped chickpeas'], toppings: ['Pickled red onions', 'Feta', 'Tahini']}
-    ];
-    return initial.map(meal => ({ ...meal, rank: getMealRank(meal, weeklyComponents) }));
-  });
+export default function FavoriteMeals({ weeklyComponents }) {
+  // Example defaults
+  const defaults = [
+    {
+      name: 'Tuna salad wrap',
+      components: ['Crepes', 'Mashed sweet potato', 'Tuna salad', 'Baby spinach'],
+      toppings: ['Roasted red pepper', 'Cucumber'],
+    },
+    {
+      name: 'Roasted red pepper chickpea salad',
+      components: ['Crisped chickpeas', 'Balsamic vinaigrette', 'Pickled red onions', 'Baby spinach'],
+      toppings: ['Roasted red pepper', 'Diced cucumber', 'Feta'],
+    },
+    {
+      name: 'Broccoli and chickpea stuffed sweet potato',
+      components: ['Baked sweet potato', 'Roasted broccoli', 'Crisped chickpeas'],
+      toppings: ['Pickled red onions', 'Feta', 'Tahini'],
+    },
+  ];
 
+  const { userId: urlUserId } = useParams();
+  const [userId, setUserId] = useState(null);
+  const [favoriteMeals, setFavoriteMeals] = useState([]);
   const [selectedMeal, setSelectedMeal] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Load userId from URL or localStorage
+  useEffect(() => {
+    const storedUserId = localStorage.getItem('userId');
+    if (urlUserId) {
+      setUserId(urlUserId);
+      localStorage.setItem('userId', urlUserId);
+    } else if (storedUserId) {
+      setUserId(storedUserId);
+    }
+  }, [urlUserId]);
+
+  useEffect(() => {
+    if (userId) {
+      // Load saved meals
+      const storedFavorites = localStorage.getItem(`savedMeals-${userId}`);
+      if (storedFavorites) {
+        try {
+          const parsed = JSON.parse(storedFavorites);
+
+          if (Array.isArray(parsed) && parsed.length === 0) {
+            // Empty array in storage – use defaults
+            setFavoriteMeals(defaults);
+          } else if (Array.isArray(parsed)) {
+            // Transform {title, ...} into {name, ...}
+            const normalizedMeals = parsed.map((meal) => {
+              let componentsArray = meal.components || [];
+              
+              // If meal.components is a string, turn it into an array with one element
+              if (typeof componentsArray === 'string') {
+                componentsArray = [componentsArray];
+              }
+            
+              // Ensure toppings is also always an array
+              let toppingsArray = meal.toppings || [];
+              if (!Array.isArray(toppingsArray)) {
+                toppingsArray = [];
+              }
+            
+              return {
+                name: meal.name || meal.title || 'Untitled Meal',
+                components: componentsArray,
+                toppings: toppingsArray,
+                notes: meal.notes || '',
+              };
+            });
+            setFavoriteMeals(normalizedMeals);
+          } else {
+            // Something else in storage – also use defaults
+            setFavoriteMeals(defaults);
+          }
+        } catch {
+          setFavoriteMeals(defaults);
+        }
+      } else {
+        // Nothing in storage – use defaults
+        setFavoriteMeals(defaults);
+      }
+
+      // After setting favoriteMeals, we can assign ranks
+      // But we must do it in a callback or a separate effect
+    }
+  }, [userId]);
+
+  // Example: transform favoriteMeals to have ranks once loaded
+  useEffect(() => {
+    if (favoriteMeals.length > 0 && weeklyComponents) {
+      setFavoriteMeals((prevMeals) =>
+        prevMeals.map((m) => ({
+          ...m,
+          rank: getMealRank(m, weeklyComponents),
+        }))
+      );
+    }
+  }, [favoriteMeals, weeklyComponents]);
+
+  // Whenever favoriteMeals changes, store it again
+  useEffect(() => {
+    if (userId) {
+      localStorage.setItem(`savedMeals-${userId}`, JSON.stringify(favoriteMeals));
+    }
+  }, [favoriteMeals, userId]);
 
   const handleEditClick = (meal) => {
     setSelectedMeal(meal);
@@ -22,29 +118,30 @@ export default function FavoriteMeals({ weeklyComponents, onAddMeal }) {
   };
 
   const handleSaveMeal = (updatedMeal) => {
-    setFavorites((prev) => 
-      prev.map(meal => meal.name === updatedMeal.name ? updatedMeal : meal)
+    setFavoriteMeals((prev) =>
+      prev.map((meal) => (meal.name === updatedMeal.name ? updatedMeal : meal))
     );
     setIsModalOpen(false);
   };
 
   const handleDeleteMeal = (mealName) => {
-    setFavorites((prev) => 
-      prev.filter(meal => meal.name !== mealName)
-    );
+    setFavoriteMeals((prev) => prev.filter((meal) => meal.name !== mealName));
     setIsModalOpen(false);
   };
 
   function getMealRank(meal, weeklyComponents) {
-    const intersectionCount = meal.components.filter(c => weeklyComponents.includes(c)).length;
-    if (intersectionCount === meal.components.length) return 2;  // all
-    if (intersectionCount > 0) return 1;                        // some
-    return 0;                                                   // none
+    const intersectionCount = meal.components.filter((c) => weeklyComponents.includes(c)).length;
+    if (intersectionCount === meal.components.length) return 2; // all match
+    if (intersectionCount > 0) return 1; // some match
+    return 0; // none match
   }
 
-  const allMatches = favorites.filter((meal) => meal.rank === 2);
-  const someMatches = favorites.filter((meal) => meal.rank === 1);
-  const noMatches = favorites.filter((meal) => meal.rank === 0);
+  // Filter meals by rank
+  const allMatches = favoriteMeals.filter((meal) => meal.rank === 2);
+  const someMatches = favoriteMeals.filter((meal) => meal.rank === 1);
+  const noMatches = favoriteMeals.filter((meal) => meal.rank === 0);
+
+  if (!userId) return <p>Loading...</p>;
 
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
@@ -66,7 +163,7 @@ export default function FavoriteMeals({ weeklyComponents, onAddMeal }) {
           </div>
         </>
       )}
-        
+
       {/* Some Components Match */}
       {someMatches.length > 0 && (
         <>
@@ -83,6 +180,7 @@ export default function FavoriteMeals({ weeklyComponents, onAddMeal }) {
           </div>
         </>
       )}
+
       {/* No Components Match */}
       {noMatches.length > 0 && (
         <>
@@ -99,6 +197,7 @@ export default function FavoriteMeals({ weeklyComponents, onAddMeal }) {
           </div>
         </>
       )}
+
       {isModalOpen && (
         <div className="relative">
           <FavoritesModal
@@ -106,8 +205,7 @@ export default function FavoriteMeals({ weeklyComponents, onAddMeal }) {
             onSave={handleSaveMeal}
             onDelete={handleDeleteMeal}
             onClose={() => setIsModalOpen(false)}
-            weeklyComponents={weeklyComponents}       
-            onAddMeal={onAddMeal}                   
+            weeklyComponents={weeklyComponents}
           />
         </div>
       )}

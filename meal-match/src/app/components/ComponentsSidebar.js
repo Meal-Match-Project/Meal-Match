@@ -5,11 +5,11 @@ import { useParams } from 'next/navigation';
 import { useDraggable } from '@dnd-kit/core';
 import { ChevronDown } from 'lucide-react';
 
-export default function ComponentsSidebar({ favoriteMeals }) {
+export default function ComponentsSidebar({ componentNames, componentCounts, favoriteMeals }) {
   const { userId: urlUserId } = useParams();
   const [userId, setUserId] = useState(null);
-  const [componentNames, setComponentNames] = useState([]);
-  const [componentCounts, setComponentCounts] = useState([]);
+  // const [componentNames, setComponentNames] = useState([]);
+  // const [componentCounts, setComponentCounts] = useState([]);
   const [openSections, setOpenSections] = useState({ components: true, meals: false });
 
   // Load userId from URL or localStorage
@@ -24,16 +24,16 @@ export default function ComponentsSidebar({ favoriteMeals }) {
   }, [urlUserId]);
 
   // Load user's "This Week" components
-  useEffect(() => {
-    if (userId) {
-      const storedComponents = localStorage.getItem(`componentsData-${userId}`);
-      if (storedComponents) {
-        const parsedComponents = JSON.parse(storedComponents).thisWeek || [];
-        setComponentNames(parsedComponents.map(comp => comp.name));
-        setComponentCounts(parsedComponents.map(comp => comp.servings || 1)); // Default servings to 1 if missing
-      }
-    }
-  }, [userId]);
+  // useEffect(() => {
+  //   if (userId) {
+  //     const storedComponents = localStorage.getItem(`componentsData-${userId}`);
+  //     if (storedComponents) {
+  //       const parsedComponents = JSON.parse(storedComponents).thisWeek || [];
+  //       setComponentNames(parsedComponents.map(comp => comp.name));
+  //       setComponentCounts(parsedComponents.map(comp => comp.servings || 1)); // Default servings to 1 if missing
+  //     }
+  //   }
+  // }, [userId]);
 
   // Filter meals that match all current components
   const fullyAvailableMeals = favoriteMeals.filter(meal =>
@@ -48,7 +48,7 @@ export default function ComponentsSidebar({ favoriteMeals }) {
   };
 
   return (
-    <div className="w-1/4 bg-orange-600 p-4">
+    <div className="overflow-scroll w-1/4 bg-orange-600 p-4">
       {/* Components Accordion */}
       <div
         className="flex justify-between items-center text-white font-bold text-lg cursor-pointer mb-2"
@@ -73,7 +73,7 @@ export default function ComponentsSidebar({ favoriteMeals }) {
         <span>Favorite Meals</span>
         <ChevronDown className={`w-4 h-4 transition-transform ${openSections.meals ? "rotate-180" : ""}`} />
       </div>
-      <div className={`overflow-hidden transition-all duration-300 ${openSections.meals ? 'max-h-96' : 'max-h-0'}`}>
+      <div className={`overflow-auto transition-all duration-300 ${openSections.meals ? 'max-h-96' : 'max-h-0'}`}>
         <div className="space-y-2">
           {fullyAvailableMeals.map((meal) => (
             <DraggableMeal key={meal.name} meal={meal} />

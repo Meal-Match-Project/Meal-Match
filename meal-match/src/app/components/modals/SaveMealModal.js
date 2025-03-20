@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 
-export default function SaveMealModal({ isOpen, onClose, onSave, mealId, mealComponents }) {
+export default function SaveMealModal({ isOpen, onClose, onSave, mealId, mealComponents, mealToppings }) {
   const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
 
@@ -19,6 +19,19 @@ export default function SaveMealModal({ isOpen, onClose, onSave, mealId, mealCom
             <ul className="list-disc list-inside">
               {mealComponents.map((component, index) => (
                 <li key={index} className="text-gray-700">{component.name}</li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-gray-500 italic">No components added.</p>
+          )}
+        </div>
+
+        <div className="mb-3">
+          <h3 className="font-semibold">Added Toppings:</h3>
+          {mealToppings && mealToppings.length > 0 ? (
+            <ul className="list-disc list-inside">
+              {mealToppings.map((topping, index) => (
+                <li key={index} className="text-gray-700">{topping.name}</li>
               ))}
             </ul>
           ) : (
@@ -49,7 +62,7 @@ export default function SaveMealModal({ isOpen, onClose, onSave, mealId, mealCom
           <button
             className="px-4 py-2 bg-blue-500 text-white rounded"
             onClick={() => {
-              onSave(mealId, title, notes);
+              onSave(title, mealComponents, mealToppings, notes);
               setTitle('');
               setNotes('');
               onClose();
