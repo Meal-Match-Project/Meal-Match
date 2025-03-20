@@ -1,8 +1,10 @@
 'use client';
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import CustomButton from "./ui/CustomButton";
 
 const Register = () => {
+  const router = useRouter();
   const [formData, setFormData] = useState({
     username: "",
     email: "",
@@ -20,23 +22,20 @@ const Register = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage("");
+
     try {
       const response = await fetch("/api/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ ...formData, type: "register" }),
       });
 
       const data = await response.json();
       if (response.ok) {
         setMessage("User registered successfully!");
-        setFormData({
-          username: "",
-          email: "",
-          password: "",
-          dietary_preferences: "",
-          allergies: "",
-        }); 
+
+        // Redirect to login page after successful registration
+        setTimeout(() => router.push("/login"), 2000);
       } else {
         setMessage(data.error || "Failed to register");
       }
@@ -50,7 +49,7 @@ const Register = () => {
     <div className="flex flex-col justify-center items-center min-h-screen bg-gray-100 relative">
       {/* Title */}
       <h1 className="text-4xl font-bold text-orange-600 mb-6">Meal Match</h1>
-      
+
       {/* Home Button */}
       <a href="/" className="absolute top-4 left-4 text-xl font-bold text-orange-600 hover:text-orange-800">
         <svg
