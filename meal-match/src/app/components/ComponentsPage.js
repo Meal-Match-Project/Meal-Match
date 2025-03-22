@@ -13,7 +13,7 @@ export default function ComponentsPage({ userId, components = [] }) {
   const [activeTab, setActiveTab] = useState('thisWeek'); // 'thisWeek' or 'all'
 
   // Filter components for display
-  const thisWeekComponents = componentsData.filter(comp => comp.servings > 0);
+  const thisWeekComponents = componentsData && componentsData.length > 0 ? componentsData.filter(comp => comp.servings > 0) : [];
   const allComponents = componentsData;
 
   const handleComponentClick = (component) => {
@@ -65,24 +65,6 @@ export default function ComponentsPage({ userId, components = [] }) {
     setIsModalOpen(false);
   };
 
-  // Fetch components from API when userId changes
-  useEffect(() => {
-    const fetchComponents = async () => {
-      if (!userId) return;
-      
-      try {
-        const response = await fetch(`/api/components?userId=${userId}`);
-        if (response.ok) {
-          const data = await response.json();
-          setComponentsData(data.components || []);
-        }
-      } catch (error) {
-        console.error('Failed to fetch components:', error);
-      }
-    };
-    
-    fetchComponents();
-  }, [userId]);
 
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
@@ -115,7 +97,7 @@ export default function ComponentsPage({ userId, components = [] }) {
             >
               <div className="flex-1">
                 <div className="font-medium">{component.name}</div>
-                <div className="text-sm text-gray-500">Servings: {component.servings}</div>
+                {activeTab === 'thisWeek' && <div className="text-sm text-gray-500">Servings: {component.servings}</div>}
               </div>
             </div>
           ))}

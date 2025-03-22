@@ -26,7 +26,7 @@ export async function getComponents(userId) {
 
 export default async function WeeklyGrid({ params }) {
     const { userId } = await params;
-    const components = getComponents(userId);
+    const components = await getComponents(userId);
     return(
         <>
             <LoggedInNav />

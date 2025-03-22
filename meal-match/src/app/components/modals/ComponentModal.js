@@ -39,17 +39,7 @@ export default function ComponentModal({ component, onSave, onDelete, onClose, i
         
         {/* Header */}
         <div className="flex justify-between items-center border-b pb-2">
-          {isEditing ? (
-            <input
-              type="text"
-              value={editedComponent.name}
-              placeholder="Component Name"
-              onChange={(e) => handleChange(e, 'name')}
-              className="text-xl font-bold border-b-2 border-gray-300 w-full focus:outline-none focus:border-blue-500"
-            />
-          ) : (
-            <h2 className="text-xl font-bold">{editedComponent.name}</h2>
-          )}
+          <h2 className="text-xl font-bold">{isEditing ? "Edit Component" : editedComponent.name}</h2>
           <div className="flex items-center gap-3">
             {!isEditing && <Pencil className="w-5 h-5 cursor-pointer text-gray-600 hover:text-black" onClick={() => setIsEditing(true)} />}
             <X className="w-6 h-6 cursor-pointer text-gray-600 hover:text-black" onClick={onClose} />
@@ -58,33 +48,57 @@ export default function ComponentModal({ component, onSave, onDelete, onClose, i
 
         {/* Scrollable Content */}
         <div className="overflow-y-auto flex-grow mt-3 pr-2 max-h-[50vh] space-y-4">
-          <div>
-            <p className="text-sm font-semibold">Servings</p>
-            {isEditing ? (
-              <input 
-                type="number" 
-                value={editedComponent.servings} 
-                onChange={(e) => handleChange(e, 'servings')} 
-                className="border p-1 w-16 rounded-md" 
+          {/* Name - shown only in edit mode */}
+          {isEditing &&
+            <div>
+              <p className="text-sm font-semibold">Name</p>             
+              <input
+                type="text"
+                value={editedComponent.name}
+                onChange={(e) => handleChange(e, 'name')}
+                className="border p-1 w-full rounded-md" 
               />
-            ) : (
-              <p>{editedComponent.servings}</p>
-            )}
+            </div>
+          }
+          
+          {/* Basic Information */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-sm font-semibold">Servings</p>
+              {isEditing ? (
+                <input 
+                  type="number" 
+                  value={editedComponent.servings} 
+                  onChange={(e) => handleChange(e, 'servings')} 
+                  className="border p-1 w-16 rounded-md" 
+                />
+              ) : (
+                <p>{editedComponent.servings}</p>
+              )}
+            </div>
+
+            <div>
+              <p className="text-sm font-semibold">Prep Time</p>
+              {isEditing ? (
+                <input 
+                  type="number" 
+                  value={editedComponent.prep_time} 
+                  onChange={(e) => handleChange(e, 'prep_time')} 
+                  className="border p-1 w-32 rounded-md" 
+                />
+              ) : (
+                <p>{editedComponent.prep_time} minutes</p>
+              )}
+            </div>
           </div>
 
-          <div>
-            <p className="text-sm font-semibold">Prep Time (minutes)</p>
-            {isEditing ? (
-              <input 
-                type="number" 
-                value={editedComponent.prep_time} 
-                onChange={(e) => handleChange(e, 'prep_time')} 
-                className="border p-1 w-32 rounded-md" 
-              />
-            ) : (
-              <p>{editedComponent.prep_time}</p>
-            )}
-          </div>
+          {/* Favorite Status - shown in view mode */}
+          {!isEditing && (
+            <div>
+              <p className="text-sm font-semibold">Favorite</p>
+              <p>{editedComponent.favorite ? "Yes" : "No"}</p>
+            </div>
+          )}
 
           {/* Ingredients */}
           <div>
@@ -120,63 +134,68 @@ export default function ComponentModal({ component, onSave, onDelete, onClose, i
               </div>
             ) : (
               <ul className="list-disc pl-5 text-sm">
-                {editedComponent.ingredients.map((ingredient, index) => (
-                  <li key={index}>{ingredient}</li>
-                ))}
+                {editedComponent.ingredients.length > 0 ? (
+                  editedComponent.ingredients.map((ingredient, index) => (
+                    <li key={index}>{ingredient || "Unnamed ingredient"}</li>
+                  ))
+                ) : (
+                  <li className="text-gray-500 italic">No ingredients listed</li>
+                )}
               </ul>
             )}
           </div>
 
           {/* Nutrition Information */}
-          {isEditing && (
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm font-semibold">Calories</p>
-                <input 
-                  type="number" 
-                  value={editedComponent.calories} 
-                  onChange={(e) => handleChange(e, 'calories')} 
-                  className="border p-1 w-full rounded-md" 
-                />
+          <div>
+            <h3 className="text-sm font-semibold">Nutrition Information</h3>
+            {isEditing ? (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-semibold">Calories</p>
+                  <input 
+                    type="number" 
+                    value={editedComponent.calories} 
+                    onChange={(e) => handleChange(e, 'calories')} 
+                    className="border p-1 w-full rounded-md" 
+                  />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">Protein (g)</p>
+                  <input 
+                    type="number" 
+                    value={editedComponent.protein} 
+                    onChange={(e) => handleChange(e, 'protein')} 
+                    className="border p-1 w-full rounded-md" 
+                  />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">Carbs (g)</p>
+                  <input 
+                    type="number" 
+                    value={editedComponent.carbs} 
+                    onChange={(e) => handleChange(e, 'carbs')} 
+                    className="border p-1 w-full rounded-md" 
+                  />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">Fat (g)</p>
+                  <input 
+                    type="number" 
+                    value={editedComponent.fat} 
+                    onChange={(e) => handleChange(e, 'fat')} 
+                    className="border p-1 w-full rounded-md" 
+                  />
+                </div>
               </div>
-              <div>
-                <p className="text-sm font-semibold">Protein (g)</p>
-                <input 
-                  type="number" 
-                  value={editedComponent.protein} 
-                  onChange={(e) => handleChange(e, 'protein')} 
-                  className="border p-1 w-full rounded-md" 
-                />
+            ) : (
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <p><strong>Calories:</strong> {editedComponent.calories || 0}</p>
+                <p><strong>Protein:</strong> {editedComponent.protein || 0}g</p>
+                <p><strong>Carbs:</strong> {editedComponent.carbs || 0}g</p>
+                <p><strong>Fat:</strong> {editedComponent.fat || 0}g</p>
               </div>
-              <div>
-                <p className="text-sm font-semibold">Carbs (g)</p>
-                <input 
-                  type="number" 
-                  value={editedComponent.carbs} 
-                  onChange={(e) => handleChange(e, 'carbs')} 
-                  className="border p-1 w-full rounded-md" 
-                />
-              </div>
-              <div>
-                <p className="text-sm font-semibold">Fat (g)</p>
-                <input 
-                  type="number" 
-                  value={editedComponent.fat} 
-                  onChange={(e) => handleChange(e, 'fat')} 
-                  className="border p-1 w-full rounded-md" 
-                />
-              </div>
-            </div>
-          )}
-
-          {!isEditing && editedComponent.calories > 0 && (
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <p><strong>Calories:</strong> {editedComponent.calories}</p>
-              <p><strong>Protein:</strong> {editedComponent.protein}g</p>
-              <p><strong>Carbs:</strong> {editedComponent.carbs}g</p>
-              <p><strong>Fat:</strong> {editedComponent.fat}g</p>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Dietary Restrictions */}
           <div>
@@ -208,7 +227,7 @@ export default function ComponentModal({ component, onSave, onDelete, onClose, i
             )}
           </div>
 
-          {/* Favorite Toggle */}
+          {/* Favorite Toggle - edit mode only */}
           {isEditing && (
             <div className="flex items-center">
               <input
