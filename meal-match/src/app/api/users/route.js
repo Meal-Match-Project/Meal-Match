@@ -24,6 +24,8 @@ export const POST = async (request) => {
                 password,
                 dietary_preferences,
                 allergies,
+                components: [],
+                meals: []
             });
 
             await newUser.save();

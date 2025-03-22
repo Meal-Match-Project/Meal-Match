@@ -2,11 +2,35 @@ import { useState } from 'react';
 import { Pencil, Trash2, X } from 'lucide-react';
 
 export default function ComponentModal({ component, onSave, onDelete, onClose, isAdding }) {
-  const [editedComponent, setEditedComponent] = useState({ ...component });
+  // Initialize with empty component if needed
+  const defaultComponent = {
+    name: '',
+    servings: 1,
+    prep_time: 0,
+    ingredients: [''],
+    calories: 0,
+    protein: 0,
+    carbs: 0,
+    fat: 0,
+    notes: '',
+    dietary_restrictions: '',
+    favorite: false
+  };
+  
+  const [editedComponent, setEditedComponent] = useState({ ...defaultComponent, ...component });
   const [isEditing, setIsEditing] = useState(isAdding);
 
   const handleChange = (e, field) => {
-    setEditedComponent({ ...editedComponent, [field]: e.target.value });
+    // Convert number fields from string to number
+    if (['servings', 'prep_time', 'calories', 'protein', 'carbs', 'fat'].includes(field)) {
+      setEditedComponent({ ...editedComponent, [field]: Number(e.target.value) });
+    } else {
+      setEditedComponent({ ...editedComponent, [field]: e.target.value });
+    }
+  };
+
+  const toggleFavorite = () => {
+    setEditedComponent({ ...editedComponent, favorite: !editedComponent.favorite });
   };
 
   return (
@@ -37,18 +61,28 @@ export default function ComponentModal({ component, onSave, onDelete, onClose, i
           <div>
             <p className="text-sm font-semibold">Servings</p>
             {isEditing ? (
-              <input type="number" value={editedComponent.servings} onChange={(e) => handleChange(e, 'servings')} className="border p-1 w-16 rounded-md" />
+              <input 
+                type="number" 
+                value={editedComponent.servings} 
+                onChange={(e) => handleChange(e, 'servings')} 
+                className="border p-1 w-16 rounded-md" 
+              />
             ) : (
               <p>{editedComponent.servings}</p>
             )}
           </div>
 
           <div>
-            <p className="text-sm font-semibold">Prep Time</p>
+            <p className="text-sm font-semibold">Prep Time (minutes)</p>
             {isEditing ? (
-              <input type="text" value={editedComponent.prepTime} onChange={(e) => handleChange(e, 'prepTime')} className="border p-1 w-32 rounded-md" />
+              <input 
+                type="number" 
+                value={editedComponent.prep_time} 
+                onChange={(e) => handleChange(e, 'prep_time')} 
+                className="border p-1 w-32 rounded-md" 
+              />
             ) : (
-              <p>{editedComponent.prepTime}</p>
+              <p>{editedComponent.prep_time}</p>
             )}
           </div>
 
@@ -93,6 +127,73 @@ export default function ComponentModal({ component, onSave, onDelete, onClose, i
             )}
           </div>
 
+          {/* Nutrition Information */}
+          {isEditing && (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm font-semibold">Calories</p>
+                <input 
+                  type="number" 
+                  value={editedComponent.calories} 
+                  onChange={(e) => handleChange(e, 'calories')} 
+                  className="border p-1 w-full rounded-md" 
+                />
+              </div>
+              <div>
+                <p className="text-sm font-semibold">Protein (g)</p>
+                <input 
+                  type="number" 
+                  value={editedComponent.protein} 
+                  onChange={(e) => handleChange(e, 'protein')} 
+                  className="border p-1 w-full rounded-md" 
+                />
+              </div>
+              <div>
+                <p className="text-sm font-semibold">Carbs (g)</p>
+                <input 
+                  type="number" 
+                  value={editedComponent.carbs} 
+                  onChange={(e) => handleChange(e, 'carbs')} 
+                  className="border p-1 w-full rounded-md" 
+                />
+              </div>
+              <div>
+                <p className="text-sm font-semibold">Fat (g)</p>
+                <input 
+                  type="number" 
+                  value={editedComponent.fat} 
+                  onChange={(e) => handleChange(e, 'fat')} 
+                  className="border p-1 w-full rounded-md" 
+                />
+              </div>
+            </div>
+          )}
+
+          {!isEditing && editedComponent.calories > 0 && (
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <p><strong>Calories:</strong> {editedComponent.calories}</p>
+              <p><strong>Protein:</strong> {editedComponent.protein}g</p>
+              <p><strong>Carbs:</strong> {editedComponent.carbs}g</p>
+              <p><strong>Fat:</strong> {editedComponent.fat}g</p>
+            </div>
+          )}
+
+          {/* Dietary Restrictions */}
+          <div>
+            <p className="text-sm font-semibold">Dietary Restrictions</p>
+            {isEditing ? (
+              <input 
+                type="text" 
+                value={editedComponent.dietary_restrictions} 
+                onChange={(e) => handleChange(e, 'dietary_restrictions')} 
+                className="border p-1 w-full rounded-md" 
+                placeholder="e.g., gluten-free, vegan, etc."
+              />
+            ) : (
+              <p className="text-sm">{editedComponent.dietary_restrictions || 'None'}</p>
+            )}
+          </div>
+
           {/* Notes */}
           <div>
             <h3 className="text-sm font-semibold">Notes</h3>
@@ -106,24 +207,48 @@ export default function ComponentModal({ component, onSave, onDelete, onClose, i
               <p className="text-sm">{editedComponent.notes || 'No notes added.'}</p>
             )}
           </div>
+
+          {/* Favorite Toggle */}
+          {isEditing && (
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="favorite"
+                checked={editedComponent.favorite}
+                onChange={toggleFavorite}
+                className="mr-2"
+              />
+              <label htmlFor="favorite" className="text-sm font-semibold">Mark as Favorite</label>
+            </div>
+          )}
         </div>
 
         {/* Buttons */}
         <div className="flex justify-end mt-4 space-x-2">
-            <button onClick={() => onDelete(editedComponent.name)} className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md transition flex items-center gap-1">
+            {!isAdding && (
+              <button 
+                onClick={() => onDelete(editedComponent._id || editedComponent.name)} 
+                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md transition flex items-center gap-1"
+              >
                 <Trash2 className="w-4 h-4" /> Delete
-            </button>
-            {isEditing && (
-                <>
-                <button onClick={() => setIsEditing(false)} className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md transition">
-                    Cancel
-                </button>
-                <button onClick={() => { onSave(editedComponent); setIsEditing(false); }} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md transition">
-                    Add
-                </button>
-                </>
+              </button>
             )}
-          
+            {isEditing && (
+              <>
+                <button 
+                  onClick={() => setIsEditing(false)} 
+                  className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md transition"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={() => { onSave(editedComponent); setIsEditing(false); }} 
+                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md transition"
+                >
+                  {isAdding ? 'Add' : 'Save'}
+                </button>
+              </>
+            )}
         </div>
       </div>
     </div>

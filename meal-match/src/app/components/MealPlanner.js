@@ -1,234 +1,348 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
 import { DndContext, DragOverlay } from '@dnd-kit/core';
 import ComponentsSidebar from './ComponentsSidebar';
 import MealGrid from './MealGrid';
 import SaveMealModal from '@/app/components/modals/SaveMealModal';
+import { addComponent } from '../actions/componentActions';
 
-export default function MealPlanner() {
-  const { userId: urlUserId } = useParams();
-  const [userId, setUserId] = useState(null);
+export default function MealPlanner({ components = [], meals = [], favorites = [], userId }) {
+  // Initialize state from props
+  const [componentsData, setComponentsData] = useState(components);
+  const [mealsData, setMealsData] = useState(meals);
+  const [favoritesData, setFavoritesData] = useState(favorites);
 
-  // Load userId from URL or localStorage
-  useEffect(() => {
-    const storedUserId = localStorage.getItem("userId");
-    if (urlUserId) {
-      setUserId(urlUserId);
-      localStorage.setItem("userId", urlUserId);
-    } else if (storedUserId) {
-      setUserId(storedUserId);
-    }
-  }, [urlUserId]);
-
-  // Default hardcoded components
-  const defaultComponents = [
-    { name: 'Garlic-herb chicken', servings: 3 },
-    { name: 'Jasmine rice', servings: 4 },
-    { name: 'Steamed broccoli', servings: 2 },
-    { name: 'Spaghetti', servings: 3 }
-  ];
-
-  const [componentNames, setComponentNames] = useState([]);
-  const [componentCounts, setComponentCounts] = useState([]);
-  const [mealPlans, setMealPlans] = useState({});
+  // Additional local states
   const [activeItem, setActiveItem] = useState(null);
-  const [savedMeals, setSavedMeals] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedMeal, setSelectedMeal] = useState(null);
   const [selectedMealComponents, setSelectedMealComponents] = useState([]);
   const [selectedMealToppings, setSelectedMealToppings] = useState([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState(null);
 
-  const [favoriteMeals] = useState([
-    {
-      name: 'Chicken & Broccoli',
-      components: ['Garlic-herb chicken', 'Steamed broccoli'],
-      toppings: ['Hot sauce', 'Parmesan'],
-    },
-    {
-      name: 'Spaghetti Delight',
-      components: ['Spaghetti'],
-      toppings: ['Marinara sauce'],
-    },
-  ]);
-
-  // Load stored data from `localStorage`
-  useEffect(() => {
-    if (userId) {
-      // Load user-created components
-      const storedComponents = localStorage.getItem(`componentsData-${userId}`);
-      if (storedComponents) {
-        const parsedComponents = JSON.parse(storedComponents).thisWeek || [];
-
-        setComponentNames(parsedComponents.map((comp) => comp.name));
-        setComponentCounts(parsedComponents.map((comp) => comp.servings || 1));
+  const saveData = async () => {
+    setIsSaving(true);
+    try {
+      const response = await fetch('/api/save-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          componentsData,
+          mealsData
+        }),
+      });
+      
+      if (response.ok) {
+        setLastSaved(new Date());
       } else {
-        setComponentNames(defaultComponents.map((comp) => comp.name));
-        setComponentCounts(defaultComponents.map((comp) => comp.servings));
+        console.error("Failed to save data");
       }
-
-      // Load meal plans
-      const storedMeals = localStorage.getItem(`mealPlans-${userId}`);
-      if (storedMeals) {
-        setMealPlans(JSON.parse(storedMeals));
-      }
-
-      // Load saved meals
-      const storedSavedMeals = localStorage.getItem(`savedMeals-${userId}`);
-      if (storedSavedMeals) {
-        try {
-          const parsed = JSON.parse(storedSavedMeals);
-          if (Array.isArray(parsed)) {
-            setSavedMeals(parsed);
-          } else {
-            setSavedMeals([]);
-          }
-        } catch {
-          setSavedMeals([]);
-        }
-      }
+    } catch (error) {
+      console.error("Error saving data:", error);
+    } finally {
+      setIsSaving(false);
     }
-  }, [userId]);
+  };
 
-  // Save mealPlans to localStorage whenever it changes
   useEffect(() => {
-    if (userId) {
-      localStorage.setItem(`mealPlans-${userId}`, JSON.stringify(mealPlans));
-    }
-  }, [mealPlans, userId]);
+    const autoSaveInterval = setInterval(() => {
+      if (componentsData.length > 0 || mealsData.length > 0) {
+        saveData();
+      }
+    }, 60000); // Auto-save every minute
+    
+    return () => clearInterval(autoSaveInterval);
+  }, [componentsData, mealsData, userId]);
 
-  // Save savedMeals to localStorage whenever it changes
+  // Save on important data changes (debounced)
   useEffect(() => {
-    if (userId) {
-      localStorage.setItem(`savedMeals-${userId}`, JSON.stringify(savedMeals));
+    const saveTimer = setTimeout(() => {
+      if (componentsData.length > 0 || mealsData.length > 0) {
+        saveData();
+      }
+    }, 5000); // Wait 5 seconds after changes before saving
+    
+    return () => clearTimeout(saveTimer);
+  }, [componentsData, mealsData]);
+    
+  // Function to handle adding a new component
+  const handleAddComponent = async (componentData) => {
+    try {
+      // Call the server action to add component to database
+      const result = await addComponent(componentData);
+      
+      if (result.success) {
+        // Update local state with the new component
+        setComponentsData(prev => [...prev, result.component]);
+      } else {
+        console.error("Failed to add component:", result.error);
+        // You could add error handling UI here
+      }
+    } catch (error) {
+      console.error("Error adding component:", error);
     }
-  }, [savedMeals, userId]);
+  };
 
+  useEffect(() => {
+    const handleBeforeUnload = async () => {
+      // Call our /api route to invoke the server action
+      await fetch('/api/save-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          componentsData,
+          mealsData
+        }),
+      });
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [componentsData, mealsData]);
+
+  // Clicking on a meal in the grid
   const handleMealClick = (mealId) => {
     setSelectedMeal(mealId);
-    const items = mealPlans[mealId] || [];
-
-    // Separate items into components vs. mini
-    setSelectedMealComponents(items.filter(item => item.type === 'component'));
-    setSelectedMealToppings(items.filter(item => item.type === 'mini'));
-  
+    const meal = mealsData.find((meal) => meal._id === mealId) || {};
+    setSelectedMealComponents(meal.components || []);
+    setSelectedMealToppings(meal.toppings || []);
     setModalOpen(true);
   };
 
+  // Clearing a meal from the grid
   const handleClearMeal = (mealId) => {
-    setMealPlans((prev) => {
-      const updatedPlans = { ...prev };
-      delete updatedPlans[mealId];
-      return updatedPlans;
-    });
+    setMealsData((prev) => 
+      prev.map((meal) => 
+        meal._id === mealId
+          ? {
+              ...meal,            // Keep ID and other base properties
+              name: '',
+              components: [],     // Clear components array
+              toppings: [],       // Clear toppings array  
+              notes: '',          // Reset notes to empty string
+              favorite: false     // Set favorite to false
+            }
+          : meal
+      )
+    );
   };
 
+  // Saving a meal (to local state) when user hits “Save Meal” in modal
   const handleSaveMeal = (title, components, toppings, notes) => {
-    setSavedMeals((prev) => ([
+    setSavedMeals((prev) => [
       ...prev,
       { name: title, components, toppings, notes },
-    ]));
+    ]);
   };
 
+  // Start dragging
   const handleDragStart = (event) => {
     setActiveItem(event.active.id);
   };
 
+  // Dropping an item (component or meal) onto a meal slot
+  // Refactored handleDragEnd to use the new function
   const handleDragEnd = (event) => {
     const { active, over } = event;
     setActiveItem(null);
-    if (!over) return;
+    if (!over) return; // dropped outside a valid meal slot
 
-    const componentName = active.id;
-    
-    if (componentNames.includes(componentName)) {
-      const index = componentNames.indexOf(componentName);
+    const draggedItemId = active.id;
+    const targetMealId = over.id;
 
-      if (componentCounts[index] > 0) {
-        setMealPlans((prev) => {
-          const updatedMealPlans = {
-            ...prev,
-            [over.id]: [...(prev[over.id] || []), { name: componentName, type: 'component' }],
+    // Case 1: If it's a favorite meal
+    if (draggedItemId.startsWith('meal-')) {
+      handleFavoriteMealDrop(draggedItemId, targetMealId);
+      return;
+    }
+
+    // Case 2: If it's a component
+    const compIndex = componentsData.findIndex(
+      (comp) => comp.name === draggedItemId
+    );
+
+    if (compIndex !== -1) {
+      // Existing component handling logic
+      const draggedComp = componentsData[compIndex];
+      if (draggedComp.servings > 0) {
+        // Add it to that meal plan's array
+        setMealsData((prev) => {
+          const updatedMeals = prev.map((meal) =>
+            meal._id === targetMealId
+              ? {
+                  ...meal,
+                  components: [
+                    ...meal.components,
+                    draggedComp.name,
+                  ],
+                }
+              : meal
+          );
+          return updatedMeals;
+        });
+        
+        // Decrement the serving count in componentsData
+        setComponentsData((prev) => {
+          const updated = [...prev];
+          updated[compIndex] = {
+            ...updated[compIndex],
+            servings: updated[compIndex].servings - 1,
           };
-          localStorage.setItem(`mealPlans-${userId}`, JSON.stringify(updatedMealPlans));
-          return updatedMealPlans;
-        });
-        setComponentCounts((prev) => {
-          const updatedCounts = [...prev];
-          updatedCounts[index] -= 1;
-          return updatedCounts;
-        });
-      }
-    } else if (componentName.startsWith('meal-')) {
-      // Handle dragging a favorite meal
-      const mealName = componentName.replace('meal-', '');
-      const mealObj = favoriteMeals.find((m) => m.name === mealName);
-      if (mealObj) {
-        mealObj.components.forEach((comp) => {
-          if (componentNames.includes(comp)) {
-            setMealPlans((prev) => ({
-              ...prev,
-              [over.id]: [...(prev[over.id] || []), { name: comp, type: 'component' }],
-            }));
-          }
+          return updated;
         });
       }
     }
   };
 
+  const handleFavoriteMealDrop = (favoriteMealId, targetMealId) => {
+    // Extract meal name from the id (remove 'meal-' prefix)
+    const mealName = favoriteMealId.replace('meal-', '');
+    
+    // Find the matching favorite meal object
+    const favMealObj = mealsData.find((m) => m.name === mealName);
+    if (!favMealObj) return;
+    
+    // Get all component names from the favorite meal
+    const componentNames = favMealObj.components || [];
+    
+    // First update the target meal to include all these components
+    setMealsData((prev) => {
+      const updatedMeals = prev.map((meal) =>
+        meal._id === targetMealId
+          ? {
+              ...meal,
+              components: [
+                ...meal.components,
+                ...componentNames.map((compName) => compName),
+              ],
+            }
+          : meal
+      );
+      return updatedMeals;
+    });
+    
+    // Then decrement the servings count for each component used
+    componentNames.forEach((compName) => {
+      const compIndex = componentsData.findIndex(
+        (comp) => comp.name === compName
+      );
+      
+      if (compIndex !== -1 && componentsData[compIndex].servings > 0) {
+        setComponentsData((prev) => {
+          const updated = [...prev];
+          updated[compIndex] = {
+            ...updated[compIndex],
+            servings: updated[compIndex].servings - 1,
+          };
+          return updated;
+        });
+      }
+    });
+  };
+
+  // Remove a single component from a meal slot
   const handleRemoveComponent = (mealId, index, componentName) => {
-    setMealPlans((prev) => {
-      const updatedMeal = [...prev[mealId]];
-      updatedMeal.splice(index, 1);
-      return { ...prev, [mealId]: updatedMeal };
+    // Remove from mealsData
+    setMealsData((prev) => {
+      const updatedMeals = prev.map((meal) =>
+        meal._id === mealId
+          ? {
+              ...meal,
+              components: meal.components.filter(
+                (comp, compIndex) => compIndex !== index
+              ),
+            }
+          : meal
+      );
+      return updatedMeals;
     });
 
-    const componentIndex = componentNames.indexOf(componentName);
-    if (componentIndex !== -1) {
-      setComponentCounts((prev) => {
-        const updatedCounts = [...prev];
-        updatedCounts[componentIndex] += 1;
-        return updatedCounts;
+    // Restore a serving to componentsData
+    const compIndex = componentsData.findIndex(
+      (comp) => comp.name === componentName
+    );
+    if (compIndex !== -1) {
+      setComponentsData((prev) => {
+        const updated = [...prev];
+        updated[compIndex] = {
+          ...updated[compIndex],
+          servings: updated[compIndex].servings + 1,
+        };
+        return updated;
       });
     }
   };
 
-  const handleAddMiniComponent = (mealId, miniComponent) => {
-    setMealPlans((prev) => ({
-      ...prev,
-      [mealId]: [{ name: miniComponent, type: 'mini' }, ...(prev[mealId] || [])],
-    }));
+  // Add a “mini” component (like a topping) to a meal slot
+  const handleAddMiniComponent = (mealId, miniComponentName) => {
+    setMealsData((prev) => {
+      const updatedMeals = prev.map((meal) =>
+        meal._id === mealId
+          ? {
+              ...meal,
+              toppings: [
+                miniComponentName,
+                ...meal.toppings,
+              ],
+            }
+          : meal
+      );
+      return updatedMeals;
+    });
   };
-  console.log(componentNames)
+
+  console.log(componentsData, mealsData, favoritesData)
+
   return (
-    <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <div className="flex h-[80vh] bg-gray-100 p-4 rounded-lg shadow-lg">
-        <ComponentsSidebar
-          componentNames={componentNames}
-          componentCounts={componentCounts}
-          favoriteMeals={favoriteMeals}
-        />
-        <MealGrid
-          mealPlans={mealPlans}
-          onRemoveComponent={handleRemoveComponent}
-          onAddMiniComponent={handleAddMiniComponent}
-          onMealClick={handleMealClick}
-          onClearMeal={handleClearMeal}
-        />
-        <SaveMealModal
-          isOpen={modalOpen}
-          onClose={() => setModalOpen(false)}
-          onSave={handleSaveMeal}
-          mealId={selectedMeal}
-          mealComponents={selectedMealComponents}
-          mealToppings={selectedMealToppings}
-        />
-      </div>
-      <DragOverlay>
-        {activeItem ? <DraggableItem id={activeItem} /> : null}
-      </DragOverlay>
-    </DndContext>
+    <>
+      <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+        <div className="flex h-[80vh] bg-gray-100 p-4 rounded-lg shadow-lg">
+          <ComponentsSidebar
+            components={componentsData}
+            favorites={favoritesData}
+            userId={userId}
+            onAddComponent={handleAddComponent}
+          />
+          <MealGrid
+            meals={mealsData}
+            onRemoveComponent={handleRemoveComponent}
+            onAddMiniComponent={handleAddMiniComponent}
+            onMealClick={handleMealClick}
+            onClearMeal={handleClearMeal}
+          />
+          <SaveMealModal
+            isOpen={modalOpen}
+            onClose={() => setModalOpen(false)}
+            onSave={handleSaveMeal}
+            mealId={selectedMeal}
+            mealComponents={selectedMealComponents}
+            mealToppings={selectedMealToppings}
+          />
+        </div>
+        <DragOverlay>
+          {activeItem ? <DraggableItem id={activeItem} /> : null}
+        </DragOverlay>
+      </DndContext>
+      <div className="fixed bottom-4 right-4 flex gap-2">
+      {lastSaved && (
+        <span className="text-sm text-gray-500 self-center">
+          Last saved: {lastSaved.toLocaleTimeString()}
+        </span>
+      )}
+      <button
+        onClick={saveData}
+        disabled={isSaving}
+        className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md shadow-lg transition"
+      >
+        {isSaving ? 'Saving...' : 'Save'}
+      </button>
+    </div>
+  </>
   );
 }
 
