@@ -8,7 +8,9 @@ const Navbar = () => {
             Meal Match
             </div>
             <div className="space-x-6 text-gray-700">
-                <a href="#" className="hover:text-orange-500">ABOUT</a>
+            <Link href="/about">
+                <span className="hover:text-orange-500">ABOUT</span>
+            </Link>
                 <a href="#" className="hover:text-orange-500">TEMPLATES</a>
                 <a href="#" className="hover:text-orange-500">PRICING</a>
                 <Link href="/login">
