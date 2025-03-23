@@ -1,50 +1,56 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useState } from 'react';
 import { useDraggable } from '@dnd-kit/core';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, CirclePlus } from 'lucide-react';
+import ComponentModal from './modals/ComponentModal';
 
-export default function ComponentsSidebar({ componentNames, componentCounts, favoriteMeals }) {
-  const { userId: urlUserId } = useParams();
-  const [userId, setUserId] = useState(null);
-  // const [componentNames, setComponentNames] = useState([]);
-  // const [componentCounts, setComponentCounts] = useState([]);
+export default function ComponentsSidebar({ components, favorites, userId, onAddComponent }) {
   const [openSections, setOpenSections] = useState({ components: true, meals: false });
+  const [showAddModal, setShowAddModal] = useState(false);
 
-  // Load userId from URL or localStorage
-  useEffect(() => {
-    const storedUserId = localStorage.getItem("userId");
-    if (urlUserId) {
-      setUserId(urlUserId);
-      localStorage.setItem("userId", urlUserId);
-    } else if (storedUserId) {
-      setUserId(storedUserId);
-    }
-  }, [urlUserId]);
-
-  // Load user's "This Week" components
-  // useEffect(() => {
-  //   if (userId) {
-  //     const storedComponents = localStorage.getItem(`componentsData-${userId}`);
-  //     if (storedComponents) {
-  //       const parsedComponents = JSON.parse(storedComponents).thisWeek || [];
-  //       setComponentNames(parsedComponents.map(comp => comp.name));
-  //       setComponentCounts(parsedComponents.map(comp => comp.servings || 1)); // Default servings to 1 if missing
-  //     }
-  //   }
-  // }, [userId]);
-
-  // Filter meals that match all current components
-  const fullyAvailableMeals = favoriteMeals.filter(meal =>
-    meal.components.every((c) => componentNames.includes(c))
-  );
+  // Extract component names from the full component objects
+  const componentNames = components.map(comp => comp.name);
+  
+  // Filter meals that match all current components, but only if favorites exists and is not empty
+  const fullyAvailableMeals = favorites && favorites.length > 0 
+    ? favorites.filter(meal =>
+        meal.components && meal.components.every((compName) => componentNames.includes(compName))
+      )
+    : [];
 
   const toggleSection = (section) => {
     setOpenSections((prev) => ({
       ...prev,
       [section]: !prev[section],
     }));
+  };
+
+  // Create default empty component for adding new ones
+  const emptyComponent = {
+    name: '',
+    servings: 1,
+    prep_time: 0,
+    ingredients: [''],
+    calories: 0,
+    protein: 0,
+    carbs: 0,
+    fat: 0,
+    notes: '',
+    dietary_restrictions: '',
+    favorite: false
+  };
+
+  const handleSaveComponent = async (component) => {
+    // Add userId to the component object
+    const componentWithUserId = { ...component, userId };
+    
+    // Call the onAddComponent function from parent
+    if (onAddComponent) {
+      await onAddComponent(componentWithUserId);
+    }
+    
+    setShowAddModal(false);
   };
 
   return (
@@ -59,12 +65,24 @@ export default function ComponentsSidebar({ componentNames, componentCounts, fav
       </div>
       <div className={`overflow-hidden transition-all duration-300 ${openSections.components ? 'max-h-96' : 'max-h-0'}`}>
         <div className="space-y-2">
-          {componentNames.map((name, index) => (
-            <DraggableComponent key={name} id={name} count={componentCounts[index]} />
+          {components.map((component) => (
+            <DraggableComponent 
+              key={component._id} 
+              id={component.name}
+              count={component.servings} 
+              component={component}
+            />
           ))}
         </div>
       </div>
-
+      <button 
+        onClick={() => setShowAddModal(true)}
+        className="flex space-x-2 justify-center w-full py-2 bg-white text-orange-600 font-bold mt-4 rounded-md"
+      >
+        <CirclePlus className="my-auto w-6 h-6" />
+        <p className="my-auto">Add Component</p>
+      </button>
+  
       {/* Favorite Meals Accordion */}
       <div
         className="flex justify-between items-center text-white font-bold text-lg cursor-pointer mt-4 mb-2"
@@ -73,18 +91,38 @@ export default function ComponentsSidebar({ componentNames, componentCounts, fav
         <span>Favorite Meals</span>
         <ChevronDown className={`w-4 h-4 transition-transform ${openSections.meals ? "rotate-180" : ""}`} />
       </div>
-      <div className={`overflow-auto transition-all duration-300 ${openSections.meals ? 'max-h-96' : 'max-h-0'}`}>
+      <div className={`overflow-hidden transition-all duration-300 ${openSections.meals ? 'max-h-96' : 'max-h-0'}`}>
         <div className="space-y-2">
-          {fullyAvailableMeals.map((meal) => (
-            <DraggableMeal key={meal.name} meal={meal} />
-          ))}
+          {fullyAvailableMeals.length > 0 ? (
+            fullyAvailableMeals.map((meal) => (
+              <DraggableMeal key={meal._id} meal={meal} />
+            ))
+          ) : (
+            <div className="text-white text-sm italic">
+              {favorites && favorites.length > 0 
+                ? "No favorites available with current components" 
+                : "No favorite meals saved yet"}
+            </div>
+          )}
         </div>
       </div>
+  
+      {/* Component Modal */}
+      {showAddModal && (
+        <ComponentModal
+          component={emptyComponent}
+          onSave={handleSaveComponent}
+          onDelete={() => {}}
+          onClose={() => setShowAddModal(false)}
+          isAdding={true}
+        />
+      )}
     </div>
   );
 }
 
-function DraggableComponent({ id, count }) {
+// ...existing DraggableComponent and DraggableMeal components...
+function DraggableComponent({ id, count, component }) {
   const { attributes, listeners, setNodeRef } = useDraggable({ id });
   const depleted = count === 0;
 
@@ -104,6 +142,7 @@ function DraggableComponent({ id, count }) {
 }
 
 function DraggableMeal({ meal }) {
+  // Use meal-{name} as the ID format to match handleFavoriteMealDrop in MealPlanner
   const { attributes, listeners, setNodeRef } = useDraggable({ id: `meal-${meal.name}` });
 
   return (

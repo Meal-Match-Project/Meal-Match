@@ -64,24 +64,8 @@ export default function Navbar() {
           
           {/* Desktop Navigation */}
           <div className="hidden md:flex ml-auto space-x-12 items-center">
-            <div className="relative" ref={myWeekDropdownRef}>
-              {/* My Week Button */}
-              <button 
-                className="text-gray-700 hover:text-gray-900 flex items-center gap-1"
-                onClick={() => setIsMyWeekDropdownOpen(!isMyWeekDropdownOpen)}
-              >
-                My Week <ChevronDown className={`w-4 h-4 transition-transform ${isMyWeekDropdownOpen ? "rotate-180" : ""}`} />
-              </button>
-
-              {/* Dropdown for Desktop */}
-              {isMyWeekDropdownOpen && (
-                <div className="absolute left-0 mt-2 w-48 bg-white shadow-lg rounded-md border">
-                  <DropdownLink href={`/dashboard/grid/${userId}`} label="Meal Planner" />
-                  <DropdownLink href={`/dashboard/ingredients/${userId}`} label="Ingredients" />
-                </div>
-              )}
-            </div>
-            
+            <NavLink href={`/dashboard/grid/${userId}`} label="Meal Planner" />
+            <NavLink href={`/dashboard/ingredients/${userId}`} label="Ingredients" />
             <NavLink href={`/dashboard/components/${userId}`} label="Components" />
             <NavLink href={`/templates/${userId}`} label="Templates" />
             <NavLink href={`/favorites/${userId}`} label="Favorites" />
@@ -118,21 +102,8 @@ export default function Navbar() {
       {/* Mobile Navigation */}
       {isMyWeekOpen && (
         <div className="md:hidden bg-white border-t" ref={mobileDropdownRef}>
-          <div>
-            <button 
-              onClick={() => setIsMyWeekDropdownOpen(!isMyWeekDropdownOpen)} 
-              className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 flex items-center justify-between"
-            >
-              My Week <ChevronDown className={`w-4 h-4 transition-transform ${isMyWeekDropdownOpen ? "rotate-180" : ""}`} />
-            </button>
-            
-            {isMyWeekDropdownOpen && (
-              <div className="pl-4 border-l border-gray-300">
-                <MobileNavLink href={`/dashboard/grid/${userId}`} label="Meal Planner" />
-                <MobileNavLink href={`/dashboard/ingredients/${userId}`} label="Ingredients" />
-              </div>
-            )}
-          </div>
+          <MobileNavLink href={`/dashboard/grid/${userId}`} label="Meal Planner" />
+          <MobileNavLink href={`/dashboard/ingredients/${userId}`} label="Ingredients" />
           <MobileNavLink href={`/dashboard/components/${userId}`} label="Components" />
           <MobileNavLink href={`/templates/${userId}`} label="Templates" />
           <MobileNavLink href={`/favorites/${userId}`} label="Favorites" />

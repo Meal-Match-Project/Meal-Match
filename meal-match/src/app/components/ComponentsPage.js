@@ -3,165 +3,134 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import ComponentModal from '@/app/components/modals/ComponentModal';
+import { Plus } from 'lucide-react';
 
-export default function ComponentsPage() {
-  const { userId: urlUserId } = useParams(); // Get userId from URL
-  const [userId, setUserId] = useState(null);
-  const [components, setComponents] = useState({ thisWeek: [], saved: [] });
+export default function ComponentsPage({ userId, components = [] }) {
+  const [componentsData, setComponentsData] = useState(components);
   const [selectedComponent, setSelectedComponent] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
+  const [activeTab, setActiveTab] = useState('thisWeek'); // 'thisWeek' or 'all'
 
-  // Load userId from URL or localStorage
-  useEffect(() => {
-    const storedUserId = localStorage.getItem("userId");
-    if (urlUserId) {
-      setUserId(urlUserId);
-      localStorage.setItem("userId", urlUserId);
-    } else if (storedUserId) {
-      setUserId(storedUserId);
-    }
-  }, [urlUserId]);
+  // Filter components for display
+  const thisWeekComponents = componentsData && componentsData.length > 0 ? componentsData.filter(comp => comp.servings > 0) : [];
+  const allComponents = componentsData;
 
-  // Load user's components from localStorage when page loads
-  useEffect(() => {
-    if (userId) {
-      const storedComponents = localStorage.getItem(`componentsData-${userId}`);
-      if (storedComponents) {
-        setComponents(JSON.parse(storedComponents));
-      } else {
-        // If no data exists for this user, initialize with default meals
-        setComponents({
-          thisWeek: [
-            { name: 'Garlic-herb chicken', servings: 3, prepTime: '45 Minutes', ingredients: ['1.5lb Chicken breasts', '2 cloves garlic', '1 tbsp oregano'] },
-            { name: 'Jasmine rice', servings: 4, prepTime: '30 Minutes', ingredients: ['1 cup jasmine rice', '2 cups water', 'Salt'] },
-            { name: 'Steamed broccoli', servings: 2, prepTime: '10 Minutes', ingredients: ['1 head broccoli', 'Salt', 'Pepper'] },
-            { name: 'Spaghetti', servings: 3, prepTime: '20 Minutes', ingredients: ['1 lb spaghetti', 'Water', 'Salt'] }
-          ],
-          saved: [
-            { name: 'Garlic-herb chicken', servings: 3, prepTime: '45 Minutes', ingredients: ['1.5lb Chicken breasts', '2 cloves garlic', '1 tbsp oregano'] },
-            { name: 'Jasmine rice', servings: 4, prepTime: '30 Minutes', ingredients: ['1 cup jasmine rice', '2 cups water', 'Salt'] }
-          ]
-        });
-      }
-    }
-  }, [userId]);
-
-  // Save components to localStorage whenever they change
-  useEffect(() => {
-    if (userId && (components.thisWeek.length || components.saved.length)) {
-      localStorage.setItem(`componentsData-${userId}`, JSON.stringify(components));
-    }
-  }, [userId, components]);
-
-  const handleEditClick = (component) => {
+  const handleComponentClick = (component) => {
     setSelectedComponent(component);
     setIsAdding(false);
     setIsModalOpen(true);
   };
 
   const handleAddClick = () => {
-    setSelectedComponent({ name: '', servings: '', prepTime: '', ingredients: [] });
+    // Create empty component with default values matching the schema
+    setSelectedComponent({
+      name: '',
+      servings: 1,
+      prep_time: 0,
+      ingredients: [''],
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      notes: '',
+      dietary_restrictions: '',
+      favorite: false
+    });
     setIsAdding(true);
     setIsModalOpen(true);
   };
 
   const handleSaveComponent = (updatedComponent) => {
-    setComponents((prev) => {
-      if (isAdding) {
-        return { ...prev, thisWeek: [...prev.thisWeek, updatedComponent] };
-      } else {
-        return {
-          ...prev,
-          thisWeek: prev.thisWeek.map(comp => comp.name === updatedComponent.name ? updatedComponent : comp),
-          saved: prev.saved.map(comp => comp.name === updatedComponent.name ? updatedComponent : comp)
-        };
-      }
-    });
+    if (isAdding) {
+      // Add userId to the new component
+      const newComponent = {
+        ...updatedComponent,
+        userId: userId
+      };
+      
+      // Add to the components array
+      setComponentsData([...componentsData, newComponent]);
+    } else {
+      // Update existing component
+      setComponentsData(componentsData.map(comp => 
+        comp._id === updatedComponent._id ? updatedComponent : comp
+      ));
+    }
     setIsModalOpen(false);
   };
 
-  const handleDeleteComponent = (componentName) => {
-    setComponents((prev) => ({
-      thisWeek: prev.thisWeek.filter(comp => comp.name !== componentName),
-      saved: prev.saved.filter(comp => comp.name !== componentName)
-    }));
+  const handleDeleteComponent = (componentId) => {
+    setComponentsData(componentsData.filter(comp => comp._id !== componentId));
+    setIsModalOpen(false);
   };
 
-  // Move a component from 'thisWeek' to 'saved'
-  const handleSaveToLibrary = (component) => {
-    setComponents((prev) => {
-      if (!prev.saved.some(comp => comp.name === component.name)) {
-        return {
-          ...prev,
-          saved: [...prev.saved, component]
-        };
-      }
-      return prev;
-    });
-  };
-
-  // Move a component from 'saved' to 'thisWeek'
-  const handleUseInWeek = (component) => {
-    setComponents((prev) => {
-      if (!prev.thisWeek.some(comp => comp.name === component.name)) {
-        return {
-          ...prev,
-          thisWeek: [...prev.thisWeek, component]
-        };
-      }
-      return prev;
-    });
-  };
-
-  if (!userId) return <p>Loading...</p>;
 
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
       <h1 className="text-2xl font-bold text-orange-600 mb-4">Components</h1>
-      {['thisWeek', 'saved'].map((category) => (
-        <div key={category} className="w-3/4 mx-auto my-6">
-          <h2 className="text-lg font-semibold bg-blue-100 p-2">{category === 'thisWeek' ? 'THIS WEEK' : 'SAVED'}</h2>
-          <div className="bg-white shadow-md rounded-md">
-            {components[category].map((component) => (
-              <div key={component.name} className="flex justify-between p-2 border-b last:border-none">
-                <span>{component.name}</span>
-                {category === 'thisWeek' && (
-                  <button onClick={() => handleSaveToLibrary(component)} className="ml-auto px-4 py-1 mr-2 bg-orange-600 text-white rounded-md font-semibold">
-                    Save
-                  </button>
-                )}
-                {category === 'saved' && (
-                  <button onClick={() => handleUseInWeek(component)} className="ml-auto px-4 py-1 mr-2 bg-green-600 text-white rounded-md font-semibold">
-                    Use
-                  </button>
-                )}
-                <button onClick={() => handleEditClick(component)} className="text-gray-600 font-semibold">
-                  &#x22EE;
-                </button>
-              </div>
-            ))}
-            {/* Add Component Button */}
-            {category === 'thisWeek' && (
-              <div className="flex justify-center p-2 border-t">
-                <button onClick={handleAddClick} className="text-blue-600">
-                  + Add Component
-                </button>
-              </div>
-            )}
-          </div>
+      
+      <div className="w-1/4 mx-auto bg-white rounded-lg shadow-md overflow-hidden">
+        {/* Tabs */}
+        <div className="flex border-b">
+          <button 
+            className={`flex-1 py-2 px-4 text-center ${activeTab === 'thisWeek' ? 'bg-orange-100 text-orange-600 font-bold' : 'bg-white'}`}
+            onClick={() => setActiveTab('thisWeek')}
+          >
+            This Week
+          </button>
+          <button 
+            className={`flex-1 py-2 px-4 text-center ${activeTab === 'all' ? 'bg-orange-100 text-orange-600 font-bold' : 'bg-white'}`}
+            onClick={() => setActiveTab('all')}
+          >
+            All Components
+          </button>
         </div>
-      ))}
+        
+        {/* Component List */}
+        <div className="divide-y">
+          {(activeTab === 'thisWeek' ? thisWeekComponents : allComponents).map((component) => (
+            <div 
+              key={component._id || component.name} 
+              className="p-3 hover:bg-gray-50 cursor-pointer flex items-center"
+              onClick={() => handleComponentClick(component)}
+            >
+              <div className="flex-1">
+                <div className="font-medium">{component.name}</div>
+                {activeTab === 'thisWeek' && <div className="text-sm text-gray-500">Servings: {component.servings}</div>}
+              </div>
+            </div>
+          ))}
+          
+          {/* Empty state */}
+          {(activeTab === 'thisWeek' ? thisWeekComponents : allComponents).length === 0 && (
+            <div className="p-6 text-center text-gray-500">
+              No components found. Add your first component below.
+            </div>
+          )}
+        </div>
+        
+        {/* Add Component Button */}
+        <div className="p-3 border-t">
+          <button 
+            onClick={handleAddClick}
+            className="w-full py-2 flex items-center justify-center bg-orange-600 hover:bg-orange-700 text-white rounded-md transition"
+          >
+            <Plus size={16} className="mr-1" />
+            Add Component
+          </button>
+        </div>
+      </div>
+      
+      {/* Component Modal */}
       {isModalOpen && (
-        <div className="relative">
-          <ComponentModal 
-            component={selectedComponent} 
-            onSave={handleSaveComponent} 
-            onDelete={handleDeleteComponent} 
-            onClose={() => setIsModalOpen(false)} 
-            isAdding={isAdding}
-          />
-        </div>
+        <ComponentModal 
+          component={selectedComponent} 
+          onSave={handleSaveComponent} 
+          onDelete={handleDeleteComponent} 
+          onClose={() => setIsModalOpen(false)} 
+          isAdding={isAdding}
+        />
       )}
     </div>
   );
