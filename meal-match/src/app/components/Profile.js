@@ -99,7 +99,6 @@ export default function Profile({ userId }) {
           allergies: allergyList // Use the array
         });
         
-        setOriginalPassword('••••••••'); // Store the masked password
       } catch (err) {
         console.error('Error fetching user data:', err);
         setError('Failed to load profile data. Please try again later.');

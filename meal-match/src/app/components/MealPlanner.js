@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { DndContext, DragOverlay } from '@dnd-kit/core';
 import ComponentsSidebar from './ComponentsSidebar';
 import MealGrid from './MealGrid';
+import { PlusCircle } from 'lucide-react';
 import SaveMealModal from '@/app/components/modals/SaveMealModal';
 import { addComponent } from '../actions/componentActions';
 import TutorialModal from './TutorialModal';
@@ -23,6 +24,46 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
   const [selectedMealComponents, setSelectedMealComponents] = useState([]);
   const [selectedMealToppings, setSelectedMealToppings] = useState([]);
   const [showTutorial, setShowTutorial] = useState(false);
+  const [quickComponentName, setQuickComponentName] = useState('');
+  const [compSidebarCollapsed, setCompSidebarCollapsed] = useState(false);
+
+  // State for saving data
+  const [isSaving, setIsSaving] = useState(false);
+  
+  // Quick add function
+  const handleQuickAddComponent = async () => {
+    if (!quickComponentName.trim()) return;
+    
+    const quickComponent = {
+      name: quickComponentName.trim(),
+      servings: 3,
+      prep_time: 15,
+      ingredients: [''],
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      notes: '',
+      dietary_restrictions: '',
+      favorite: false,
+      userId
+    };
+    
+    try {
+      const result = await addComponent(quickComponent);
+      if (result.success) {
+        setComponentsData(prev => [...prev, result.component]);
+        setQuickComponentName('');
+      }
+    } catch (error) {
+      console.error("Error adding quick component:", error);
+    }
+  };
+
+  // Toggle sidebar
+  const toggleSidebar = () => {
+    setCompSidebarCollapsed(!compSidebarCollapsed);
+  };
 
   // Check if user has seen the tutorial
   useEffect(() => {
@@ -391,14 +432,44 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
         />
       )}
       
+      {/* Quick Add Component Bar
+      <div className="bg-white p-2 mb-2 rounded-lg shadow-md flex items-center">
+        <input
+          type="text"
+          value={quickComponentName}
+          onChange={(e) => setQuickComponentName(e.target.value)}
+          placeholder="Quick add component (e.g., 'Grilled Chicken')"
+          className="border border-gray-300 rounded-md py-2 px-3 flex-grow mr-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') handleQuickAddComponent();
+          }}
+        />
+        <button
+          onClick={handleQuickAddComponent}
+          className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-md flex items-center"
+        >
+          <PlusCircle className="w-5 h-5 mr-1" />
+          Add
+        </button>
+        <button
+          onClick={toggleSidebar}
+          className="ml-2 bg-gray-200 hover:bg-gray-300 px-3 py-2 rounded-md text-gray-700"
+        >
+          {compSidebarCollapsed ? 'Show Sidebar' : 'Hide Sidebar'}
+        </button>
+      </div> */}
+      
       <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-        <div className="flex h-[80vh] bg-gray-100 p-4 rounded-lg shadow-lg">
-          <ComponentsSidebar
-            components={componentsData}
-            favorites={favoritesData}
-            userId={userId}
-            onAddComponent={handleAddComponent}
-          />
+        <div className="flex h-[calc(100vh-150px)] bg-gray-100 rounded-lg shadow-lg overflow-hidden">
+          {!compSidebarCollapsed && (
+            <ComponentsSidebar
+              components={componentsData}
+              favorites={favoritesData}
+              userId={userId}
+              onAddComponent={handleAddComponent}
+              className="w-1/6 min-w-[200px]"
+            />
+          )}
           <MealGrid
             meals={mealsData}
             components={componentsData}
@@ -407,7 +478,9 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
             onMealClick={handleMealClick}
             onClearMeal={handleClearMeal}
             onMoveComponent={handleMoveComponent}
-            dayInfo={daysInfo} />
+            dayInfo={daysInfo}
+            className={compSidebarCollapsed ? "w-full" : "w-5/6"}
+          />
           <SaveMealModal
             isOpen={modalOpen}
             onClose={() => setModalOpen(false)}
@@ -425,13 +498,14 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
   );
 }
 
+// Enhanced DraggableItem with improved visuals
 function DraggableItem({ id }) {
   // Check if this is a meal component
   if (id.toString().startsWith('meal-component:')) {
     // Extract just the component name (third part of the ID)
     const [, , component] = id.split(':');
     return (
-      <div className="p-2 max-w-[150px] bg-orange-500 text-white font-bold rounded-lg shadow-md cursor-grabbing transform scale-110 transition-transform duration-200">
+      <div className="p-2 max-w-[200px] bg-orange-500 text-white font-bold rounded-lg shadow-md cursor-grabbing transform scale-110 transition-transform duration-200 z-50">
         {component}
       </div>
     );
@@ -442,7 +516,7 @@ function DraggableItem({ id }) {
     // It's a favorite meal - extract name after 'meal-' prefix
     const mealName = id.replace('meal-', '');
     return (
-      <div className="p-2 max-w-[150px] bg-orange-500 text-white font-bold rounded-lg shadow-md cursor-grabbing transform scale-110 transition-transform duration-200">
+      <div className="p-2 max-w-[200px] bg-orange-500 text-white font-bold rounded-lg shadow-md cursor-grabbing transform scale-110 transition-transform duration-200 z-50">
         {mealName}
       </div>
     );
@@ -450,7 +524,7 @@ function DraggableItem({ id }) {
   
   // Default case - regular component from sidebar
   return (
-    <div className="p-2 max-w-[150px] bg-orange-500 text-white font-bold rounded-lg shadow-md cursor-grabbing transform scale-110 transition-transform duration-200">
+    <div className="p-2 max-w-[200px] bg-orange-500 text-white font-bold rounded-lg shadow-md cursor-grabbing transform scale-110 transition-transform duration-200 z-50">
       {id}
     </div>
   );

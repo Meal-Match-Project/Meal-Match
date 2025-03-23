@@ -178,14 +178,15 @@ export async function saveUserData(userId, componentsData, mealsData) {
     };
 }
 
+
 export default async function Dashboard({ params }) {
     const { userId } = await params;
     const { favoriteMeals, userComponents, userMeals, dayInfo } = await fetchUserData(userId);
   
     return (
-      <div className="min-h-full bg-gray-100">
+      <div className="min-h-screen bg-gray-100">
         <LoggedInNav />
-        <main className="container mx-auto p-4">
+        <main className="w-full px-2 py-4">
           <MealPlanner 
             components={userComponents} 
             meals={userMeals} 
