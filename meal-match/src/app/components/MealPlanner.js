@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { DndContext, DragOverlay } from '@dnd-kit/core';
 import ComponentsSidebar from './ComponentsSidebar';
 import MealGrid from './MealGrid';
@@ -8,7 +8,6 @@ import { PlusCircle } from 'lucide-react';
 import SaveMealModal from '@/app/components/modals/SaveMealModal';
 import { addComponent } from '../actions/componentActions';
 import TutorialModal from './TutorialModal';
-
 
 export default function MealPlanner({ components = [], meals = [], favorites = [], userId, dayInfo = [] }) {
   // Initialize state from props
@@ -29,7 +28,72 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
 
   // State for saving data
   const [isSaving, setIsSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState(new Date());
+  const [saveNeeded, setSaveNeeded] = useState(false);
   
+  // Save data function - memoized to avoid recreation on each render
+  const saveData = useCallback(async () => {
+    if (isSaving) return; // Prevent multiple simultaneous saves
+    
+    setIsSaving(true);
+    try {
+      console.log("Saving data to database...");
+      
+      const response = await fetch('/api/save-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          componentsData,
+          mealsData
+        }),
+      });
+      
+      if (response.ok) {
+        console.log("Data saved successfully");
+        setLastSaved(new Date());
+        setSaveNeeded(false);
+      } else {
+        const errorData = await response.json();
+        console.error("Failed to save data:", errorData);
+        // Retry save after failure
+        setSaveNeeded(true);
+      }
+    } catch (error) {
+      console.error("Error saving data:", error);
+      // Retry save after error
+      setSaveNeeded(true);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [componentsData, mealsData, userId, isSaving]);
+
+  // Effect to trigger save when changes are made
+  useEffect(() => {
+    if (saveNeeded && !isSaving) {
+      saveData();
+    }
+  }, [saveNeeded, isSaving, saveData]);
+  
+  // Effect to retry saving periodically if needed
+  useEffect(() => {
+    let saveTimer;
+    if (saveNeeded && !isSaving) {
+      saveTimer = setTimeout(() => {
+        saveData();
+      }, 3000); // Retry after 3 seconds
+    }
+    
+    return () => {
+      if (saveTimer) clearTimeout(saveTimer);
+    };
+  }, [saveNeeded, isSaving, saveData]);
+  
+  // Utility function to mark that save is needed
+  const markSaveNeeded = () => {
+    setSaveNeeded(true);
+  };
+
   // Quick add function
   const handleQuickAddComponent = async () => {
     if (!quickComponentName.trim()) return;
@@ -54,6 +118,7 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
       if (result.success) {
         setComponentsData(prev => [...prev, result.component]);
         setQuickComponentName('');
+        markSaveNeeded();
       }
     } catch (error) {
       console.error("Error adding quick component:", error);
@@ -73,32 +138,6 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
     }
   }, [userId]);
 
-  // Save data function - only called explicitly when needed
-  const saveData = async () => {
-    setIsSaving(true);
-    try {
-      const response = await fetch('/api/save-data', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId,
-          componentsData,
-          mealsData
-        }),
-      });
-      
-      if (response.ok) {
-        setLastSaved(new Date());
-      } else {
-        console.error("Failed to save data");
-      }
-    } catch (error) {
-      console.error("Error saving data:", error);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
   // Function to handle adding a new component
   const handleAddComponent = async (componentData) => {
     try {
@@ -108,6 +147,7 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
       if (result.success) {
         // Update local state with the new component
         setComponentsData(prev => [...prev, result.component]);
+        markSaveNeeded();
       } else {
         console.error("Failed to add component:", result.error);
       }
@@ -142,8 +182,7 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
       )
     );
     
-    // Save after clearing a meal
-    saveData();
+    markSaveNeeded();
   };
 
   const handleMoveComponent = (sourceMealId, sourceIndex, component, targetMealId) => {
@@ -173,8 +212,7 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
       return updatedMeals;
     });
     
-    // Save after moving a component
-    saveData();
+    markSaveNeeded();
   };
 
   // Start dragging
@@ -255,9 +293,9 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
       }
     }
     
-    // Save data only if a component was added
+    // Mark for saving if a component was added
     if (componentAdded) {
-      saveData();
+      markSaveNeeded();
     }
   };
 
@@ -307,8 +345,7 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
         }
       });
       
-      // Save data when a meal is saved through the modal
-      saveData();
+      markSaveNeeded();
       
       return true;
     } catch (error) {
@@ -362,8 +399,7 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
       }
     });
     
-    // Save data after dropping a favorite meal
-    saveData();
+    markSaveNeeded();
   };
 
   // Remove a single component from a meal slot
@@ -398,8 +434,7 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
       });
     }
     
-    // Save after removing a component
-    saveData();
+    markSaveNeeded();
   };
 
   // Add a "mini" component (like a topping) to a meal slot
@@ -419,8 +454,7 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
       return updatedMeals;
     });
     
-    // Save after adding a mini component
-    saveData();
+    markSaveNeeded();
   };
 
   return (
@@ -432,32 +466,17 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
         />
       )}
       
-      {/* Quick Add Component Bar
-      <div className="bg-white p-2 mb-2 rounded-lg shadow-md flex items-center">
-        <input
-          type="text"
-          value={quickComponentName}
-          onChange={(e) => setQuickComponentName(e.target.value)}
-          placeholder="Quick add component (e.g., 'Grilled Chicken')"
-          className="border border-gray-300 rounded-md py-2 px-3 flex-grow mr-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') handleQuickAddComponent();
-          }}
-        />
-        <button
-          onClick={handleQuickAddComponent}
-          className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-md flex items-center"
-        >
-          <PlusCircle className="w-5 h-5 mr-1" />
-          Add
-        </button>
-        <button
-          onClick={toggleSidebar}
-          className="ml-2 bg-gray-200 hover:bg-gray-300 px-3 py-2 rounded-md text-gray-700"
-        >
-          {compSidebarCollapsed ? 'Show Sidebar' : 'Hide Sidebar'}
-        </button>
-      </div> */}
+      {/* Save Status Indicator */}
+      <div className="flex justify-end items-center mb-2 text-sm">
+        <span className="mr-2">
+          {saveNeeded ? 
+            <span className="text-orange-600">Saving changes...</span> : 
+            <span className="text-green-600">
+              All changes saved {lastSaved.toLocaleTimeString()}
+            </span>
+          }
+        </span>
+      </div>
       
       <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <div className="flex h-[calc(100vh-150px)] bg-gray-100 rounded-lg shadow-lg overflow-hidden">
