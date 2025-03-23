@@ -4,9 +4,11 @@ import CustomButton from "./ui/CustomButton";
 const Navbar = () => {
     return (
         <nav className="flex justify-between items-center p-4 bg-white shadow-md">
-            <div className="text-xl font-bold bg-orange-600 text-white px-10 py-4 rounded-md">
-            Meal Match
-            </div>
+            <Link href="/">
+                <div className="text-xl font-bold bg-orange-600 text-white px-10 py-4 rounded-md cursor-pointer">
+                    Meal Match
+                </div>
+            </Link>
             <div className="space-x-6 text-gray-700">
             <Link href="/about">
                 <span className="hover:text-orange-500">ABOUT</span>
