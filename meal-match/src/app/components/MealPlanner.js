@@ -6,12 +6,15 @@ import ComponentsSidebar from './ComponentsSidebar';
 import MealGrid from './MealGrid';
 import SaveMealModal from '@/app/components/modals/SaveMealModal';
 import { addComponent } from '../actions/componentActions';
+import TutorialModal from './TutorialModal';
 
-export default function MealPlanner({ components = [], meals = [], favorites = [], userId }) {
+
+export default function MealPlanner({ components = [], meals = [], favorites = [], userId, dayInfo = [] }) {
   // Initialize state from props
   const [componentsData, setComponentsData] = useState(components);
   const [mealsData, setMealsData] = useState(meals);
   const [favoritesData, setFavoritesData] = useState(favorites);
+  const [daysInfo, setDaysInfo] = useState(dayInfo);
 
   // Additional local states
   const [activeItem, setActiveItem] = useState(null);
@@ -19,9 +22,17 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
   const [selectedMeal, setSelectedMeal] = useState(null);
   const [selectedMealComponents, setSelectedMealComponents] = useState([]);
   const [selectedMealToppings, setSelectedMealToppings] = useState([]);
-  const [isSaving, setIsSaving] = useState(false);
-  const [lastSaved, setLastSaved] = useState(null);
+  const [showTutorial, setShowTutorial] = useState(false);
 
+  // Check if user has seen the tutorial
+  useEffect(() => {
+    const tutorialShown = localStorage.getItem(`tutorial-shown-${userId}`);
+    if (!tutorialShown && userId) {
+      setShowTutorial(true);
+    }
+  }, [userId]);
+
+  // Save data function - only called explicitly when needed
   const saveData = async () => {
     setIsSaving(true);
     try {
@@ -47,27 +58,6 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
     }
   };
 
-  useEffect(() => {
-    const autoSaveInterval = setInterval(() => {
-      if (componentsData.length > 0 || mealsData.length > 0) {
-        saveData();
-      }
-    }, 60000); // Auto-save every minute
-    
-    return () => clearInterval(autoSaveInterval);
-  }, [componentsData, mealsData, userId]);
-
-  // Save on important data changes (debounced)
-  useEffect(() => {
-    const saveTimer = setTimeout(() => {
-      if (componentsData.length > 0 || mealsData.length > 0) {
-        saveData();
-      }
-    }, 5000); // Wait 5 seconds after changes before saving
-    
-    return () => clearTimeout(saveTimer);
-  }, [componentsData, mealsData]);
-    
   // Function to handle adding a new component
   const handleAddComponent = async (componentData) => {
     try {
@@ -79,31 +69,11 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
         setComponentsData(prev => [...prev, result.component]);
       } else {
         console.error("Failed to add component:", result.error);
-        // You could add error handling UI here
       }
     } catch (error) {
       console.error("Error adding component:", error);
     }
   };
-
-  useEffect(() => {
-    const handleBeforeUnload = async () => {
-      // Call our /api route to invoke the server action
-      await fetch('/api/save-data', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          componentsData,
-          mealsData
-        }),
-      });
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-  }, [componentsData, mealsData]);
 
   // Clicking on a meal in the grid
   const handleMealClick = (mealId) => {
@@ -130,14 +100,40 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
           : meal
       )
     );
+    
+    // Save after clearing a meal
+    saveData();
   };
 
-  // Saving a meal (to local state) when user hits “Save Meal” in modal
-  const handleSaveMeal = (title, components, toppings, notes) => {
-    setSavedMeals((prev) => [
-      ...prev,
-      { name: title, components, toppings, notes },
-    ]);
+  const handleMoveComponent = (sourceMealId, sourceIndex, component, targetMealId) => {
+    // 1. Remove from source meal
+    setMealsData((prev) => {
+      const updatedMeals = prev.map((meal) =>
+        meal._id === sourceMealId
+          ? {
+              ...meal,
+              components: meal.components.filter((_, idx) => idx !== sourceIndex),
+            }
+          : meal
+      );
+      return updatedMeals;
+    });
+  
+    // 2. Add to target meal
+    setMealsData((prev) => {
+      const updatedMeals = prev.map((meal) =>
+        meal._id === targetMealId
+          ? {
+              ...meal,
+              components: [...meal.components, component],
+            }
+          : meal
+      );
+      return updatedMeals;
+    });
+    
+    // Save after moving a component
+    saveData();
   };
 
   // Start dragging
@@ -146,26 +142,44 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
   };
 
   // Dropping an item (component or meal) onto a meal slot
-  // Refactored handleDragEnd to use the new function
   const handleDragEnd = (event) => {
     const { active, over } = event;
     setActiveItem(null);
+    
     if (!over) return; // dropped outside a valid meal slot
-
+    
     const draggedItemId = active.id;
     const targetMealId = over.id;
-
+    
+    let componentAdded = false; // Flag to track if a component was added
+    
+    // Check if this is a meal component being dragged
+    if (draggedItemId.toString().startsWith('meal-component:')) {
+      // Extract the source meal ID, component name, and index
+      const [, sourceMealId, component, sourceIndex] = draggedItemId.split(':');
+      
+      // If dropping onto a different meal, move the component
+      if (sourceMealId !== targetMealId) {
+        handleMoveComponent(sourceMealId, parseInt(sourceIndex), component, targetMealId);
+        componentAdded = true;
+      }
+      
+      // If same meal, do nothing
+      return;
+    }
+    
     // Case 1: If it's a favorite meal
     if (draggedItemId.startsWith('meal-')) {
       handleFavoriteMealDrop(draggedItemId, targetMealId);
+      componentAdded = true;
       return;
     }
-
-    // Case 2: If it's a component
+    
+    // Case 2: If it's a component from the sidebar
     const compIndex = componentsData.findIndex(
       (comp) => comp.name === draggedItemId
     );
-
+    
     if (compIndex !== -1) {
       // Existing component handling logic
       const draggedComp = componentsData[compIndex];
@@ -195,7 +209,70 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
           };
           return updated;
         });
+        
+        componentAdded = true;
       }
+    }
+    
+    // Save data only if a component was added
+    if (componentAdded) {
+      saveData();
+    }
+  };
+
+  const handleSaveMeal = async (mealData, isFavorite) => {
+    try {
+      // 1. First save/update the meal
+      const mealResponse = await fetch(`/api/meals/${mealData._id || 'new'}`, {
+        method: mealData._id ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...mealData,
+          userId, // Make sure userId is included
+        })
+      });
+      
+      if (!mealResponse.ok) {
+        throw new Error('Failed to save meal');
+      }
+      
+      const savedMeal = await mealResponse.json();
+      const mealId = savedMeal.meal._id;
+      
+      // 2. Handle favorite status
+      if (isFavorite) {
+        const favoriteResponse = await fetch('/api/favorites', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: userId,
+            meal_id: mealId,
+            type: 'meal'
+          })
+        });
+        
+        if (!favoriteResponse.ok) {
+          console.warn('Failed to save as favorite');
+        }
+      }
+      
+      // 3. Update local state
+      setMealsData(prev => {
+        const exists = prev.some(m => m._id === mealId);
+        if (exists) {
+          return prev.map(m => m._id === mealId ? { ...m, ...mealData, _id: mealId } : m);
+        } else {
+          return [...prev, { ...mealData, _id: mealId }];
+        }
+      });
+      
+      // Save data when a meal is saved through the modal
+      saveData();
+      
+      return true;
+    } catch (error) {
+      console.error('Error saving meal:', error);
+      throw error;
     }
   };
 
@@ -243,6 +320,9 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
         });
       }
     });
+    
+    // Save data after dropping a favorite meal
+    saveData();
   };
 
   // Remove a single component from a meal slot
@@ -276,9 +356,12 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
         return updated;
       });
     }
+    
+    // Save after removing a component
+    saveData();
   };
 
-  // Add a “mini” component (like a topping) to a meal slot
+  // Add a "mini" component (like a topping) to a meal slot
   const handleAddMiniComponent = (mealId, miniComponentName) => {
     setMealsData((prev) => {
       const updatedMeals = prev.map((meal) =>
@@ -294,12 +377,20 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
       );
       return updatedMeals;
     });
+    
+    // Save after adding a mini component
+    saveData();
   };
-
-  console.log(componentsData, mealsData, favoritesData)
 
   return (
     <>
+      {showTutorial && (
+        <TutorialModal 
+          userId={userId}
+          onClose={() => setShowTutorial(false)}
+        />
+      )}
+      
       <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <div className="flex h-[80vh] bg-gray-100 p-4 rounded-lg shadow-lg">
           <ComponentsSidebar
@@ -310,11 +401,13 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
           />
           <MealGrid
             meals={mealsData}
+            components={componentsData}
             onRemoveComponent={handleRemoveComponent}
             onAddMiniComponent={handleAddMiniComponent}
             onMealClick={handleMealClick}
             onClearMeal={handleClearMeal}
-          />
+            onMoveComponent={handleMoveComponent}
+            dayInfo={daysInfo} />
           <SaveMealModal
             isOpen={modalOpen}
             onClose={() => setModalOpen(false)}
@@ -328,25 +421,34 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
           {activeItem ? <DraggableItem id={activeItem} /> : null}
         </DragOverlay>
       </DndContext>
-      <div className="fixed bottom-4 right-4 flex gap-2">
-      {lastSaved && (
-        <span className="text-sm text-gray-500 self-center">
-          Last saved: {lastSaved.toLocaleTimeString()}
-        </span>
-      )}
-      <button
-        onClick={saveData}
-        disabled={isSaving}
-        className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md shadow-lg transition"
-      >
-        {isSaving ? 'Saving...' : 'Save'}
-      </button>
-    </div>
-  </>
+    </>
   );
 }
 
 function DraggableItem({ id }) {
+  // Check if this is a meal component
+  if (id.toString().startsWith('meal-component:')) {
+    // Extract just the component name (third part of the ID)
+    const [, , component] = id.split(':');
+    return (
+      <div className="p-2 max-w-[150px] bg-orange-500 text-white font-bold rounded-lg shadow-md cursor-grabbing transform scale-110 transition-transform duration-200">
+        {component}
+      </div>
+    );
+  }
+  
+  // If it's a component from sidebar or favorite meal
+  if (id.startsWith('meal-')) {
+    // It's a favorite meal - extract name after 'meal-' prefix
+    const mealName = id.replace('meal-', '');
+    return (
+      <div className="p-2 max-w-[150px] bg-orange-500 text-white font-bold rounded-lg shadow-md cursor-grabbing transform scale-110 transition-transform duration-200">
+        {mealName}
+      </div>
+    );
+  }
+  
+  // Default case - regular component from sidebar
   return (
     <div className="p-2 max-w-[150px] bg-orange-500 text-white font-bold rounded-lg shadow-md cursor-grabbing transform scale-110 transition-transform duration-200">
       {id}

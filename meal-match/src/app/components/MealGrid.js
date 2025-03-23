@@ -1,47 +1,86 @@
 'use client';
 
-import { useDroppable } from '@dnd-kit/core';
+import { useDroppable, useDraggable } from '@dnd-kit/core';
 import { useEffect, useRef, useState } from 'react';
-import { Heart } from 'lucide-react';
+import { Heart, GripVertical } from 'lucide-react';
 
-export default function MealGrid({ meals, onRemoveComponent, onAddMiniComponent, onMealClick, onClearMeal }) {
-  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-  const mealTypes = ['Breakfast', 'Lunch', 'Dinner'];
-
-  return (
-    <div className="overflow-auto p-4 w-3/4">
-      <div className="min-w-max grid grid-cols-7 gap-4">
-        {days.map((day) => (
-          <div key={day} className="border rounded-lg shadow-md p-2 bg-gray-100 min-w-[150px]">
-            <h2 className="text-lg font-bold text-center">{day}</h2>
-            <div className="space-y-4 mt-2">
-              {mealTypes.map((mealType) => {
-                // Find the meal document that matches this day and meal type
-                const meal = meals.find(
-                  m => m.day_of_week === day && m.meal_type === mealType
-                ) || { _id: `${day}-${mealType}`, components: [], toppings: [] };
-                
-                return (
-                  <DroppableMeal
-                    key={mealType}
-                    id={meal._id}
-                    meal={meal}
-                    onRemoveComponent={onRemoveComponent}
-                    onAddMiniComponent={onAddMiniComponent}
-                    onMealClick={onMealClick}
-                    onClearMeal={onClearMeal}
-                  />
-                );
-              })}
+export default function MealGrid({ 
+    meals, 
+    components, 
+    onRemoveComponent, 
+    onAddMiniComponent, 
+    onMealClick, 
+    onClearMeal, 
+    onMoveComponent,
+    dayInfo = []
+  }) {
+    // Use dynamic days from dayInfo, or fallback to default days if not provided
+    const days = dayInfo.length === 7 
+      ? dayInfo.map(day => ({ display: day.display, name: day.name }))
+      : [
+          { display: 'Today', name: new Date().toLocaleDateString('en-US', { weekday: 'long' }) },
+          ...Array(6).fill().map((_, i) => {
+            const day = new Date();
+            day.setDate(day.getDate() + i + 1);
+            return { 
+              display: day.toLocaleDateString('en-US', { weekday: 'long' }), 
+              name: day.toLocaleDateString('en-US', { weekday: 'long' }) 
+            };
+          })
+        ];
+    const mealTypes = ['Breakfast', 'Lunch', 'Dinner'];
+  
+    // Create a list of valid component names
+    const validComponentNames = components.map(comp => comp.name);
+  
+    return (
+      <div className="overflow-auto p-4 w-3/4">
+        <div className="min-w-max grid grid-cols-7 gap-4">
+          {days.map((day, index) => (
+            <div key={index} className="border rounded-lg shadow-md p-2 bg-gray-100 min-w-[150px]">
+              <h2 className="text-lg font-bold text-center">
+                {day.display}
+              </h2>
+              <div className="space-y-4 mt-2">
+                {mealTypes.map((mealType) => {
+                  // Find the meal document that matches this day and meal type
+                  const meal = meals.find(
+                    m => m.day_of_week === day.name && m.meal_type === mealType
+                  ) || { _id: `${day.name}-${mealType}`, components: [], toppings: [] };
+                  
+                  // Filter out components that don't exist anymore in the master list
+                  const validComponents = (meal.components || []).filter(
+                    comp => validComponentNames.includes(comp)
+                  );
+                  
+                  // If components were filtered out, we need to update the meal
+                  if (validComponents.length !== (meal.components || []).length) {
+                    meal.components = validComponents;
+                  }
+                  
+                  return (
+                    <DroppableMeal
+                      key={mealType}
+                      id={meal._id}
+                      meal={meal}
+                      onRemoveComponent={onRemoveComponent}
+                      onAddMiniComponent={onAddMiniComponent}
+                      onMealClick={onMealClick}
+                      onClearMeal={onClearMeal}
+                      onMoveComponent={onMoveComponent}
+                      validComponentNames={validComponentNames}
+                    />
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
 
-function DroppableMeal({ id, meal, onRemoveComponent, onAddMiniComponent, onMealClick, onClearMeal }) {
+function DroppableMeal({ id, meal, onRemoveComponent, onAddMiniComponent, onMealClick, onClearMeal, onMoveComponent, validComponentNames }) {
     const { setNodeRef, isOver } = useDroppable({ id });
     const [miniComponentInput, setMiniComponentInput] = useState('');
     const [showOptions, setShowOptions] = useState(false);
@@ -126,18 +165,15 @@ function DroppableMeal({ id, meal, onRemoveComponent, onAddMiniComponent, onMeal
 
             {/* Display Components */}
             {components.map((component, index) => (
-                <div
-                    key={index}
-                    className="mt-2 p-1 flex justify-between items-center bg-gradient-to-r from-orange-600 to-orange-500 text-white font-semibold rounded-lg shadow-lg hover:scale-105 transition-transform duration-300 ease-in-out"
-                >
-                    <span>{component}</span>
-                    <button
-                        className="font-bold px-1 text-white"
-                        onClick={() => onRemoveComponent(id, index, component)}
-                    >
-                        ✕
-                    </button>
-                </div>
+                <DraggableComponent
+                    key={`${id}-component-${index}`}
+                    mealId={id}
+                    component={component}
+                    index={index}
+                    onRemoveComponent={onRemoveComponent}
+                    onMoveComponent={onMoveComponent}
+                    isValid={validComponentNames.includes(component)}
+                />
             ))}
 
             {/* Display Toppings */}
@@ -162,6 +198,49 @@ function DroppableMeal({ id, meal, onRemoveComponent, onAddMiniComponent, onMeal
                     {meal.name}
                 </div>
             )}
+        </div>
+    );
+}
+
+function DraggableComponent({ mealId, component, index, onRemoveComponent, onMoveComponent, isValid }) {
+    // Create a unique ID for this component instance in this meal
+    const dragId = `meal-component:${mealId}:${component}:${index}`;
+    
+    const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+        id: dragId,
+        data: {
+            type: 'meal-component',
+            mealId,
+            component,
+            index
+        }
+    });
+
+    // Apply warning styling if component not valid (deleted from components list)
+    const invalidClass = !isValid ? 'from-red-500 to-red-400 opacity-70' : 'from-orange-600 to-orange-500';
+    
+    return (
+        <div
+            ref={setNodeRef}
+            {...attributes}
+            className={`mt-2 p-1 flex justify-between items-center 
+                      bg-gradient-to-r ${invalidClass} text-white font-semibold rounded-lg shadow-lg 
+                      hover:scale-105 transition-transform duration-300 ease-in-out
+                      ${isDragging ? 'opacity-50' : ''}`}
+            style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+        >
+            <div className="flex items-center">
+                <div className="mr-2 cursor-grab" {...listeners}>
+                    <GripVertical className="w-4 h-4" />
+                </div>
+                <span>{component}</span>
+            </div>
+            <button
+                className="font-bold px-1 text-white"
+                onClick={() => onRemoveComponent(mealId, index, component)}
+            >
+                ✕
+            </button>
         </div>
     );
 }

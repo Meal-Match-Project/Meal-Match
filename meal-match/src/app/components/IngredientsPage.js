@@ -9,9 +9,8 @@ export default function IngredientsPage({ userId, ingredients = [] }) {
   const [selectedIngredient, setSelectedIngredient] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
-  const [activeTab, setActiveTab] = useState('all'); // 'toBuy', 'expiringSoon', or 'all'
 
-  // Helper to check if an ingredient is expiring soon
+  // Helper to check if an ingredient is expiring soon (within 2 days)
   const isExpiringSoon = (ingredient) => {
     if (!ingredient.status || !ingredient.status.startsWith('Bought ')) return false;
     
@@ -27,16 +26,11 @@ export default function IngredientsPage({ userId, ingredients = [] }) {
     const expirationDate = new Date(purchaseDate);
     expirationDate.setDate(expirationDate.getDate() + (ingredient.shelf_life || 7));
     
-    // Check if expiration date is within the next day
+    // Check if expiration date is within the next TWO days
     const now = new Date();
-    const oneDayInMs = 24 * 60 * 60 * 1000;
-    return expirationDate - now < oneDayInMs && expirationDate > now;
+    const twoDaysInMs = 2 * 24 * 60 * 60 * 1000;
+    return expirationDate - now < twoDaysInMs && expirationDate > now;
   };
-
-  // Filter ingredients for display
-  const toBuyIngredients = ingredientsData.filter(ing => ing.status === 'Need to buy');
-  const expiringSoonIngredients = ingredientsData.filter(ing => isExpiringSoon(ing));
-  const allIngredients = ingredientsData;
 
   const handleIngredientClick = (ingredient) => {
     setSelectedIngredient(ingredient);
@@ -79,7 +73,7 @@ export default function IngredientsPage({ userId, ingredients = [] }) {
           setIngredientsData([...ingredientsData, data.ingredient]);
         }
       } else {
-        // Update existing ingredient
+        // Update existing ingredient - fix the endpoint path
         const response = await fetch(`/api/ingredients/${updatedIngredient._id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -91,6 +85,8 @@ export default function IngredientsPage({ userId, ingredients = [] }) {
           setIngredientsData(ingredientsData.map(ing => 
             ing._id === updatedIngredient._id ? updatedIngredient : ing
           ));
+        } else {
+          console.error('Failed to update ingredient:', await response.text());
         }
       }
     } catch (error) {
@@ -102,12 +98,15 @@ export default function IngredientsPage({ userId, ingredients = [] }) {
 
   const handleDeleteIngredient = async (ingredientId) => {
     try {
+      // Fix the endpoint path
       const response = await fetch(`/api/ingredients/${ingredientId}`, {
         method: 'DELETE'
       });
       
       if (response.ok) {
         setIngredientsData(ingredientsData.filter(ing => ing._id !== ingredientId));
+      } else {
+        console.error('Failed to delete ingredient:', await response.text());
       }
     } catch (error) {
       console.error('Error deleting ingredient:', error);
@@ -121,73 +120,39 @@ export default function IngredientsPage({ userId, ingredients = [] }) {
       <h1 className="text-2xl font-bold text-orange-600 mb-4">Ingredients</h1>
       
       <div className="w-1/4 mx-auto bg-white rounded-lg shadow-md overflow-hidden">
-        {/* Tabs */}
-        <div className="flex border-b">
-          <button 
-            className={`flex-1 py-2 px-4 text-center ${activeTab === 'toBuy' ? 'bg-orange-100 text-orange-600 font-bold' : 'bg-white'}`}
-            onClick={() => setActiveTab('toBuy')}
-          >
-            To Buy
-          </button>
-          <button 
-            className={`flex-1 py-2 px-4 text-center ${activeTab === 'expiringSoon' ? 'bg-orange-100 text-orange-600 font-bold' : 'bg-white'}`}
-            onClick={() => setActiveTab('expiringSoon')}
-          >
-            Expiring Soon
-          </button>
-          <button 
-            className={`flex-1 py-2 px-4 text-center ${activeTab === 'all' ? 'bg-orange-100 text-orange-600 font-bold' : 'bg-white'}`}
-            onClick={() => setActiveTab('all')}
-          >
-            All
-          </button>
-        </div>
-        
-        {/* Ingredient List */}
+        {/* Ingredient List - No tabs, just show all ingredients */}
         <div className="divide-y">
-          {(activeTab === 'toBuy' 
-            ? toBuyIngredients 
-            : activeTab === 'expiringSoon' 
-              ? expiringSoonIngredients 
-              : allIngredients
-          ).map((ingredient) => (
-            <div 
-              key={ingredient._id || ingredient.name} 
-              className="p-3 hover:bg-gray-50 cursor-pointer flex items-center"
-              onClick={() => handleIngredientClick(ingredient)}
-            >
-              <div className="flex-1">
-                <div className="font-medium flex items-center">
-                  {ingredient.name}
-                  {isExpiringSoon(ingredient) && (
-                    <AlertTriangle className="w-4 h-4 ml-2 text-yellow-500" />
-                  )}
-                </div>
-                <div className="text-sm">
-                  <span className={ingredient.status === 'Need to buy' ? 'text-yellow-500' : 'text-green-500'}>
-                    {ingredient.status}
-                  </span>
-                  <span className="text-gray-500 ml-2">
-                    {ingredient.amount} {ingredient.unit}
-                  </span>
+          {ingredientsData.length > 0 ? (
+            ingredientsData.map((ingredient) => (
+              <div 
+                key={ingredient._id || ingredient.name} 
+                className="p-3 hover:bg-gray-50 cursor-pointer flex items-center"
+                onClick={() => handleIngredientClick(ingredient)}
+              >
+                <div className="flex-1">
+                  <div className="font-medium flex items-center justify-between">
+                    <span>{ingredient.name}</span>
+                    {isExpiringSoon(ingredient) && (
+                      <div className="flex items-center text-yellow-600">
+                        <AlertTriangle className="w-4 h-4 mr-1" />
+                        <span className="text-xs">Expiring soon</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="text-sm">
+                    <span className={ingredient.status === 'Need to buy' ? 'text-yellow-500' : 'text-green-500'}>
+                      {ingredient.status}
+                    </span>
+                    <span className="text-gray-500 ml-2">
+                      {ingredient.amount} {ingredient.unit}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-          
-          {/* Empty state */}
-          {(activeTab === 'toBuy' 
-            ? toBuyIngredients.length === 0 
-            : activeTab === 'expiringSoon' 
-              ? expiringSoonIngredients.length === 0 
-              : allIngredients.length === 0
-          ) && (
+            ))
+          ) : (
             <div className="p-6 text-center text-gray-500">
-              {activeTab === 'toBuy' 
-                ? 'No ingredients to buy.' 
-                : activeTab === 'expiringSoon'
-                  ? 'No ingredients expiring soon.'
-                  : 'No ingredients found. Add your first ingredient below.'}
+              No ingredients found. Add your first ingredient below.
             </div>
           )}
         </div>

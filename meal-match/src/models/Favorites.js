@@ -13,6 +13,10 @@ const FavoriteSchema = new mongoose.Schema({
         type: String,
         required: false,
     },
+    type: {
+        type: String,
+        required: true,
+    }
 }, {timestamps: true});
 
 const Favorite = mongoose.models.Favorite || mongoose.model("Favorite", FavoriteSchema);

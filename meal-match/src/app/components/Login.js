@@ -2,19 +2,48 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import CustomButton from "./ui/CustomButton";
+import { XCircle, CheckCircle, AlertTriangle } from 'lucide-react';
 
 const Login = () => {
   const router = useRouter();
   const [formData, setFormData] = useState({ email: "", password: "" });
-  const [message, setMessage] = useState("");
+  const [errors, setErrors] = useState({});
+  const [successMessage, setSuccessMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+    
+    // Clear errors for this field
+    if (errors[name]) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setMessage("");
+    
+    // Reset all messages
+    setErrors({});
+    setSuccessMessage("");
+    
+    // Basic validation
+    if (!formData.email.trim()) {
+      setErrors(prev => ({ ...prev, email: "Email or username is required" }));
+      return;
+    }
+    
+    if (!formData.password) {
+      setErrors(prev => ({ ...prev, password: "Password is required" }));
+      return;
+    }
+    
+    setIsSubmitting(true);
 
     try {
         const response = await fetch("/api/users", {
@@ -24,21 +53,42 @@ const Login = () => {
         });
 
         const data = await response.json();
+        
         if (response.ok) {
-            setMessage("Login successful!");
+            setSuccessMessage("Login successful! Redirecting to dashboard...");
 
             // Store userId and token in localStorage for persistence
             localStorage.setItem("token", data.token);
             localStorage.setItem("userId", data.userId);
 
-            // Redirect to dashboard
-            router.push(`/dashboard/grid/${data.userId}`);
+            // Redirect to dashboard after a short delay to show success message
+            setTimeout(() => {
+                router.push(`/dashboard/grid/${data.userId}`);
+            }, 1000);
         } else {
-            setMessage(data.error || "Invalid username/email or password");
+            // Handle specific error cases based on the status code
+            switch (response.status) {
+                case 404:
+                    setErrors(prev => ({ ...prev, email: "User not found" }));
+                    break;
+                case 401:
+                    setErrors(prev => ({ ...prev, password: "Incorrect password" }));
+                    break;
+                default:
+                    setErrors(prev => ({ 
+                      ...prev, 
+                      general: data.error || "An error occurred during login" 
+                    }));
+            }
         }
     } catch (error) {
         console.error("Login error:", error);
-        setMessage("An error occurred while logging in");
+        setErrors(prev => ({ 
+          ...prev, 
+          general: "Network error. Please check your connection and try again." 
+        }));
+    } finally {
+        setIsSubmitting(false);
     }
 };
 
@@ -60,25 +110,43 @@ const Login = () => {
         Home
       </a>
 
-      <div className="bg-white p-8 rounded-lg shadow-md w-96">
+      <div className="bg-white p-8 rounded-lg shadow-md w-96 max-w-full">
         <h2 className="text-2xl font-bold text-center text-orange-600 mb-6">
           Login
         </h2>
 
-        {message && <p className="text-center text-red-500">{message}</p>}
+        {/* Success Message */}
+        {successMessage && (
+          <div className="flex items-center p-4 mb-4 bg-green-100 border-l-4 border-green-500 rounded">
+            <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
+            <p className="text-green-700">{successMessage}</p>
+          </div>
+        )}
+
+        {/* General Error Message */}
+        {errors.general && (
+          <div className="flex items-center p-4 mb-4 bg-red-100 border-l-4 border-red-500 rounded">
+            <XCircle className="h-5 w-5 text-red-500 mr-2" />
+            <p className="text-red-700">{errors.general}</p>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-gray-700">Email or Username</label>
             <input
-              type="text" // Allows usernames too
+              type="text"
               name="email"
               value={formData.email}
               onChange={handleChange}
-              required
-              className="w-full px-4 py-2 border rounded-md text-black focus:outline-none focus:ring-2 focus:ring-orange-500"
+              className={`w-full px-4 py-2 border rounded-md text-black focus:outline-none focus:ring-2 focus:ring-orange-500 ${
+                errors.email ? 'border-red-500' : ''
+              }`}
               placeholder="Enter email or username"
             />
+            {errors.email && (
+              <p className="text-red-500 text-sm mt-1">{errors.email}</p>
+            )}
           </div>
 
           <div>
@@ -88,13 +156,21 @@ const Login = () => {
               name="password"
               value={formData.password}
               onChange={handleChange}
-              required
-              className="w-full px-4 py-2 border rounded-md text-black focus:outline-none focus:ring-2 focus:ring-orange-500"
+              className={`w-full px-4 py-2 border rounded-md text-black focus:outline-none focus:ring-2 focus:ring-orange-500 ${
+                errors.password ? 'border-red-500' : ''
+              }`}
             />
+            {errors.password && (
+              <p className="text-red-500 text-sm mt-1">{errors.password}</p>
+            )}
           </div>
 
-          <CustomButton type="submit" className="w-full bg-orange-500 text-white hover:bg-orange-600">
-            Login
+          <CustomButton 
+            type="submit" 
+            className={`w-full ${isSubmitting ? 'bg-orange-400' : 'bg-orange-500'} text-white hover:bg-orange-600 flex justify-center items-center`}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? 'Logging in...' : 'Login'}
           </CustomButton>
         </form>
 

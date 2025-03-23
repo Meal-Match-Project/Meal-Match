@@ -6,18 +6,30 @@ import { ChevronDown, CirclePlus } from 'lucide-react';
 import ComponentModal from './modals/ComponentModal';
 
 export default function ComponentsSidebar({ components, favorites, userId, onAddComponent }) {
+  console.log("Favorites: ",favorites);
   const [openSections, setOpenSections] = useState({ components: true, meals: false });
   const [showAddModal, setShowAddModal] = useState(false);
 
+  // Get components that are available this week (servings > 0)
+  const availableComponents = components.filter(comp => comp.servings > 0);
+  
+  // Extract component names from available components
+  const availableComponentNames = availableComponents.map(comp => comp.name);
+  
+  // Filter meals that match all available components
+  const fullyAvailableMeals = 
+    // Check if favorites array exists and is not empty
+    favorites && favorites.length > 0 
+      ? favorites.filter(meal =>
+          // Make sure meal has components array and every component is available
+          meal.components && 
+          meal.components.length > 0 &&
+          meal.components.every(compName => availableComponentNames.includes(compName))
+        )
+      : [];
+
   // Extract component names from the full component objects
   const componentNames = components.map(comp => comp.name);
-  
-  // Filter meals that match all current components, but only if favorites exists and is not empty
-  const fullyAvailableMeals = favorites && favorites.length > 0 
-    ? favorites.filter(meal =>
-        meal.components && meal.components.every((compName) => componentNames.includes(compName))
-      )
-    : [];
 
   const toggleSection = (section) => {
     setOpenSections((prev) => ({
@@ -52,6 +64,8 @@ export default function ComponentsSidebar({ components, favorites, userId, onAdd
     
     setShowAddModal(false);
   };
+
+  console.log(favorites);
 
   return (
     <div className="overflow-scroll w-1/4 bg-orange-600 p-4">

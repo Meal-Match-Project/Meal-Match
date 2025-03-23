@@ -1,7 +1,38 @@
 'use client';
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import CustomButton from "./ui/CustomButton";
+import { CheckCircle, XCircle, AlertTriangle, X } from 'lucide-react';
+
+// Add these option arrays
+const DIETARY_PREFERENCES = [
+  'Omnivore',
+  'Vegetarian',
+  'Vegan',
+  'Pescatarian',
+  'Keto',
+  'Paleo',
+  'Low-carb',
+  'Low-fat',
+  'Gluten-free',
+  'Dairy-free',
+  'Mediterranean',
+  'Whole30'
+];
+
+const ALLERGIES = [
+  'Peanuts',
+  'Tree nuts',
+  'Milk',
+  'Eggs',
+  'Fish',
+  'Shellfish',
+  'Soy',
+  'Wheat',
+  'Gluten',
+  'Sesame',
+  'Sulfites'
+];
 
 const Register = () => {
   const router = useRouter();
@@ -9,39 +40,190 @@ const Register = () => {
     username: "",
     email: "",
     password: "",
-    dietary_preferences: "",
-    allergies: "",
+    dietary_preferences: [],
+    allergies: [],
   });
 
-  const [message, setMessage] = useState("");
+  const [errors, setErrors] = useState({});
+  const [successMessage, setSuccessMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Validation patterns based on User schema
+  const validations = {
+    email: /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,
+    password: /^(?=.*\d)(?=.*[@#\-_$%^&+=§!\?])(?=.*[a-z])(?=.*[A-Z])[0-9A-Za-z@#\-_$%^&+=§!\?]+$/
+  };
+
+  // Clear errors when form changes
+  useEffect(() => {
+    if (Object.keys(errors).length > 0) {
+      // Only clear errors for fields that have changed
+      const newErrors = { ...errors };
+      Object.keys(formData).forEach(key => {
+        if (newErrors[key] && 
+            ((Array.isArray(formData[key]) && formData[key].length > 0) || 
+             (!Array.isArray(formData[key]) && formData[key] !== ""))) {
+          delete newErrors[key];
+        }
+      });
+      setErrors(newErrors);
+    }
+  }, [formData]);
+
+  const validateForm = () => {
+    const newErrors = {};
+    
+    // Username validation
+    if (!formData.username.trim()) {
+      newErrors.username = "Username is required";
+    } else if (formData.username.length > 32) {
+      newErrors.username = "Username must be 32 characters or less";
+    }
+    
+    // Email validation
+    if (!formData.email.trim()) {
+      newErrors.email = "Email is required";
+    } else if (!validations.email.test(formData.email)) {
+      newErrors.email = "Please enter a valid email address";
+    }
+    
+    // Password validation
+    if (!formData.password) {
+      newErrors.password = "Password is required";
+    } else {
+      if (formData.password.length < 6) {
+        newErrors.password = "Password must be at least 6 characters";
+      }
+      if (!validations.password.test(formData.password)) {
+        newErrors.password = "Password must contain at least 1 uppercase letter, 1 lowercase letter, 1 number, and a special character";
+      }
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    
+    // Handle array fields separately
+    if (name === 'dietary_preferences' || name === 'allergies') {
+      return; // These are handled by their own functions
+    }
+    
+    setFormData({ ...formData, [name]: value });
+    
+    // Real-time validation for select fields
+    if (name === 'email' || name === 'password') {
+      if (name === 'email' && value && !validations.email.test(value)) {
+        setErrors(prev => ({ ...prev, email: "Please enter a valid email address" }));
+      } else if (name === 'password' && value && !validations.password.test(value)) {
+        setErrors(prev => ({ 
+          ...prev, 
+          password: "Password must contain at least 1 uppercase letter, 1 lowercase letter, 1 number, and a special character" 
+        }));
+      } else {
+        setErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors[name];
+          return newErrors;
+        });
+      }
+    }
+  };
+
+  // Add preference handler
+  const handleAddPreference = (preference) => {
+    if (preference && !formData.dietary_preferences.includes(preference)) {
+      setFormData({
+        ...formData,
+        dietary_preferences: [...formData.dietary_preferences, preference]
+      });
+    }
+  };
+
+  // Remove preference handler
+  const handleRemovePreference = (preference) => {
+    setFormData({
+      ...formData,
+      dietary_preferences: formData.dietary_preferences.filter(p => p !== preference)
+    });
+  };
+
+  // Add allergy handler
+  const handleAddAllergy = (allergy) => {
+    if (allergy && !formData.allergies.includes(allergy)) {
+      setFormData({
+        ...formData,
+        allergies: [...formData.allergies, allergy]
+      });
+    }
+  };
+
+  // Remove allergy handler
+  const handleRemoveAllergy = (allergy) => {
+    setFormData({
+      ...formData,
+      allergies: formData.allergies.filter(a => a !== allergy)
+    });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setMessage("");
+    setSuccessMessage("");
+    
+    // Validate all fields before submission
+    if (!validateForm()) {
+      return;
+    }
+    
+    setIsSubmitting(true);
 
     try {
+      // Convert arrays to comma-separated strings for API
+      const apiFormData = {
+        ...formData,
+        dietary_preferences: formData.dietary_preferences.join(', '),
+        allergies: formData.allergies.join(', '),
+        type: "register"
+      };
+
       const response = await fetch("/api/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...formData, type: "register" }),
+        body: JSON.stringify(apiFormData),
       });
 
       const data = await response.json();
+      
       if (response.ok) {
-        setMessage("User registered successfully!");
-
+        setSuccessMessage("User registered successfully! Redirecting to login page...");
+        // Clear any remaining errors
+        setErrors({});
         // Redirect to login page after successful registration
         setTimeout(() => router.push("/login"), 2000);
       } else {
-        setMessage(data.error || "Failed to register");
+        // Handle specific API error responses
+        if (data.error === "User already exists") {
+          setErrors(prev => ({ 
+            ...prev, 
+            email: "A user with this email already exists" 
+          }));
+        } else {
+          setErrors(prev => ({ 
+            ...prev, 
+            general: data.error || "Failed to register. Please try again." 
+          }));
+        }
       }
     } catch (error) {
       console.error("Registration error:", error);
-      setMessage("An error occurred while registering");
+      setErrors(prev => ({ 
+        ...prev, 
+        general: "An error occurred while registering. Please try again later." 
+      }));
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -69,12 +251,26 @@ const Register = () => {
         Home
       </a>
 
-      <div className="bg-white p-8 rounded-lg shadow-md w-96">
+      <div className="bg-white p-8 rounded-lg shadow-md w-96 max-w-full">
         <h2 className="text-2xl font-bold text-center text-orange-600 mb-6">
           Sign Up
         </h2>
 
-        {message && <p className="text-center text-red-500">{message}</p>}
+        {/* Success Message */}
+        {successMessage && (
+          <div className="flex items-center p-4 mb-4 bg-green-100 border-l-4 border-green-500 rounded">
+            <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
+            <p className="text-green-700">{successMessage}</p>
+          </div>
+        )}
+
+        {/* General Error Message */}
+        {errors.general && (
+          <div className="flex items-center p-4 mb-4 bg-red-100 border-l-4 border-red-500 rounded">
+            <XCircle className="h-5 w-5 text-red-500 mr-2" />
+            <p className="text-red-700">{errors.general}</p>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -84,9 +280,13 @@ const Register = () => {
               name="username"
               value={formData.username}
               onChange={handleChange}
-              required
-              className="w-full px-4 py-2 border rounded-md text-black focus:outline-none focus:ring-2 focus:ring-orange-500"
+              className={`w-full px-4 py-2 border rounded-md text-black focus:outline-none focus:ring-2 focus:ring-orange-500 ${
+                errors.username ? 'border-red-500' : ''
+              }`}
             />
+            {errors.username && (
+              <p className="text-red-500 text-sm mt-1">{errors.username}</p>
+            )}
           </div>
 
           <div>
@@ -96,9 +296,13 @@ const Register = () => {
               name="email"
               value={formData.email}
               onChange={handleChange}
-              required
-              className="w-full px-4 py-2 border rounded-md text-black focus:outline-none focus:ring-2 focus:ring-orange-500"
+              className={`w-full px-4 py-2 border rounded-md text-black focus:outline-none focus:ring-2 focus:ring-orange-500 ${
+                errors.email ? 'border-red-500' : ''
+              }`}
             />
+            {errors.email && (
+              <p className="text-red-500 text-sm mt-1">{errors.email}</p>
+            )}
           </div>
 
           <div>
@@ -108,35 +312,119 @@ const Register = () => {
               name="password"
               value={formData.password}
               onChange={handleChange}
-              required
-              className="w-full px-4 py-2 border rounded-md text-black focus:outline-none focus:ring-2 focus:ring-orange-500"
+              className={`w-full px-4 py-2 border rounded-md text-black focus:outline-none focus:ring-2 focus:ring-orange-500 ${
+                errors.password ? 'border-red-500' : ''
+              }`}
             />
+            {errors.password && (
+              <p className="text-red-500 text-sm mt-1">{errors.password}</p>
+            )}
+            <div className="mt-2 text-xs text-gray-600">
+              <p>Password must contain:</p>
+              <ul className="list-disc ml-5 mt-1">
+                <li className={formData.password.length >= 6 ? 'text-green-600' : ''}>
+                  At least 6 characters
+                </li>
+                <li className={/[A-Z]/.test(formData.password) ? 'text-green-600' : ''}>
+                  At least 1 uppercase letter
+                </li>
+                <li className={/[a-z]/.test(formData.password) ? 'text-green-600' : ''}>
+                  At least 1 lowercase letter
+                </li>
+                <li className={/[0-9]/.test(formData.password) ? 'text-green-600' : ''}>
+                  At least 1 number
+                </li>
+                <li className={/[@#\-_$%^&+=§!\?]/.test(formData.password) ? 'text-green-600' : ''}>
+                  At least 1 special character (@#-_$%^&+=§!?)
+                </li>
+              </ul>
+            </div>
           </div>
 
           <div>
             <label className="block text-gray-700">Dietary Preferences</label>
-            <input
-              type="text"
-              name="dietary_preferences"
-              value={formData.dietary_preferences}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border rounded-md text-black focus:outline-none focus:ring-2 focus:ring-orange-500"
-            />
+            <div className="mt-1 border border-gray-300 rounded-md shadow-sm p-2 focus-within:ring-1 focus-within:ring-orange-500 focus-within:border-orange-500">
+              <div className="flex flex-wrap gap-2 mb-2">
+                {formData.dietary_preferences.map((pref) => (
+                  <div key={pref} className="bg-orange-100 text-orange-800 px-2 py-1 rounded-md flex items-center">
+                    {pref}
+                    <button
+                      type="button"
+                      onClick={() => handleRemovePreference(pref)}
+                      className="ml-1 text-orange-600 hover:text-orange-800"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <select
+                name="dietary_preferences"
+                value=""
+                onChange={(e) => {
+                  if (e.target.value) {
+                    handleAddPreference(e.target.value);
+                    e.target.value = "";
+                  }
+                }}
+                className="w-full border-0 focus:ring-0 p-0 text-gray-500"
+              >
+                <option value="" disabled>Select preferences...</option>
+                {DIETARY_PREFERENCES
+                  .filter(pref => !formData.dietary_preferences.includes(pref))
+                  .map(pref => (
+                    <option key={pref} value={pref}>{pref}</option>
+                  ))
+                }
+              </select>
+            </div>
           </div>
 
           <div>
             <label className="block text-gray-700">Allergies</label>
-            <input
-              type="text"
-              name="allergies"
-              value={formData.allergies}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border rounded-md text-black focus:outline-none focus:ring-2 focus:ring-orange-500"
-            />
+            <div className="mt-1 border border-gray-300 rounded-md shadow-sm p-2 focus-within:ring-1 focus-within:ring-orange-500 focus-within:border-orange-500">
+              <div className="flex flex-wrap gap-2 mb-2">
+                {formData.allergies.map((allergy) => (
+                  <div key={allergy} className="bg-red-100 text-red-800 px-2 py-1 rounded-md flex items-center">
+                    {allergy}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveAllergy(allergy)}
+                      className="ml-1 text-red-600 hover:text-red-800"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <select
+                name="allergies"
+                value=""
+                onChange={(e) => {
+                  if (e.target.value) {
+                    handleAddAllergy(e.target.value);
+                    e.target.value = "";
+                  }
+                }}
+                className="w-full border-0 focus:ring-0 p-0 text-gray-500"
+              >
+                <option value="" disabled>Select allergies...</option>
+                {ALLERGIES
+                  .filter(allergy => !formData.allergies.includes(allergy))
+                  .map(allergy => (
+                    <option key={allergy} value={allergy}>{allergy}</option>
+                  ))
+                }
+              </select>
+            </div>
           </div>
 
-          <CustomButton type="submit" className="w-full bg-orange-500 text-white hover:bg-orange-600">
-            Register
+          <CustomButton 
+            type="submit" 
+            className={`w-full ${isSubmitting ? 'bg-orange-400' : 'bg-orange-500'} text-white hover:bg-orange-600 flex justify-center items-center`}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? 'Registering...' : 'Register'}
           </CustomButton>
         </form>
 

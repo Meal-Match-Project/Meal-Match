@@ -4,13 +4,18 @@ import Ingredient from '@/models/Ingredients';
 
 export async function PUT(request, { params }) {
   try {
-    const { id } = params;
+    const ingredientID = await params.ingredientID;
+    
+    if (!ingredientID) {
+      return NextResponse.json({ error: 'Ingredient ID is required' }, { status: 400 });
+    }
+    
     const updatedData = await request.json();
     
     await connect();
     
     const updatedIngredient = await Ingredient.findByIdAndUpdate(
-      id,
+      ingredientID,
       updatedData,
       { new: true, runValidators: true }
     ).lean();
@@ -31,11 +36,15 @@ export async function PUT(request, { params }) {
 
 export async function DELETE(request, { params }) {
   try {
-    const { id } = params;
+    const ingredientID = await params.ingredientID;
+    
+    if (!ingredientID) {
+      return NextResponse.json({ error: 'Ingredient ID is required' }, { status: 400 });
+    }
     
     await connect();
     
-    const deletedIngredient = await Ingredient.findByIdAndDelete(id);
+    const deletedIngredient = await Ingredient.findByIdAndDelete(ingredientID);
     
     if (!deletedIngredient) {
       return NextResponse.json({ error: 'Ingredient not found' }, { status: 404 });

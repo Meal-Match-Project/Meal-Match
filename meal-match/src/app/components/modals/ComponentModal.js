@@ -78,7 +78,7 @@ export default function ComponentModal({ component, onSave, onDelete, onClose, i
             </div>
 
             <div>
-              <p className="text-sm font-semibold">Prep Time</p>
+              <p className="text-sm font-semibold">Prep Time (minutes)</p>
               {isEditing ? (
                 <input 
                   type="number" 

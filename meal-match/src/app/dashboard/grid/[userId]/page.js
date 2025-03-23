@@ -6,29 +6,32 @@ import User from "@/models/Users";
 import Component from "@/models/Components";
 import Favorite from "@/models/Favorites";
 
-//Helper function to get most recent monday to display weekly grid
-function getMostRecentMonday() {
+function getToday() {
+    const today = new Date();
+    // Reset time to midnight (start of the day)
+    today.setHours(0, 0, 0, 0);
+    return today;
+}
+
+// Helper function to get day names for the next 7 days starting from today
+function getNextSevenDayNames() {
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const today = new Date();
     
-    // Get the day of the week (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
-    const dayOfWeek = today.getDay();
+    // Array to store the day names for the next 7 days
+    const nextSevenDays = [];
     
-    // Calculate days to subtract to get to the most recent Monday
-    // If today is Monday (1), subtract 0 days
-    // If today is Tuesday (2), subtract 1 day
-    // If today is Wednesday (3), subtract 2 days
-    // ...and so on
-    // If today is Sunday (0), subtract 6 days
-    const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    for (let i = 0; i < 7; i++) {
+        const day = new Date();
+        day.setDate(today.getDate() + i);
+        nextSevenDays.push({
+            date: new Date(day),
+            name: dayNames[day.getDay()],
+            display: i === 0 ? 'Today' : dayNames[day.getDay()]
+        });
+    }
     
-    // Create a new date object for the most recent Monday
-    const mostRecentMonday = new Date(today);
-    mostRecentMonday.setDate(today.getDate() - daysToSubtract);
-    
-    // Reset time to midnight (start of the day)
-    mostRecentMonday.setHours(0, 0, 0, 0);
-    
-    return mostRecentMonday;
+    return nextSevenDays;
 }
 
 // Helper function to convert ObjectIds to strings and ensure all data is serializable
@@ -82,34 +85,48 @@ export async function saveUserData(userId, componentsData, mealsData) {
     }
 
     // Calculate date range for the current week
-    const lastMonday = getMostRecentMonday();
-    const nextWeek = new Date(lastMonday.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const today = getToday();
+    const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+    
+    // Get the next seven day names
+    const nextSevenDays = getNextSevenDayNames();
 
-    // Try to find meals for the current week
+    // Try to find meals for the next 7 days
     const userMeals = await Meal.find({
         userId: userId,
-        date: { $gte: lastMonday, $lt: nextWeek },
+        date: { $gte: today, $lt: nextWeek },
     }).lean();
     
-    // If no meals found for current week, initialize them
-    if (userMeals.length === 0) {
+    // If no or insufficient meals found for current week, initialize them
+    if (userMeals.length < 21) { // Should have 21 meals (7 days × 3 meal types)
         const mealTypes = ['Breakfast', 'Lunch', 'Dinner'];
-        const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
         const newMealIds = [];
-
-        console.log("No meals found for current week. Creating new ones...");
+        
+        console.log("Initializing meals for the next 7 days...");
+        
+        // Create lookup for existing meals to avoid duplicates
+        const existingMeals = {};
+        userMeals.forEach(meal => {
+            const key = `${meal.day_of_week}-${meal.meal_type}-${meal.date.toISOString().split('T')[0]}`;
+            existingMeals[key] = true;
+        });
 
         // Create meal slots for each day and meal type
         for (let i = 0; i < 7; i++) {
-            const currentDate = new Date(lastMonday);
-            currentDate.setDate(lastMonday.getDate() + i);
-            const dayOfWeek = daysOfWeek[i];
+            const currentDate = new Date(today);
+            currentDate.setDate(today.getDate() + i);
+            const dayOfWeek = nextSevenDays[i].name;
 
             for (const mealType of mealTypes) {
+                const mealKey = `${dayOfWeek}-${mealType}-${currentDate.toISOString().split('T')[0]}`;
+                
+                // Skip if this meal already exists
+                if (existingMeals[mealKey]) continue;
+                
                 try {
                     // Create a new meal document
                     const newMeal = new Meal({
-                        userId: userId,  // Make sure to add the userId
+                        userId: userId,
                         date: currentDate,
                         day_of_week: dayOfWeek,
                         meal_type: mealType,
@@ -117,7 +134,7 @@ export async function saveUserData(userId, componentsData, mealsData) {
                         notes: '',
                         components: [],
                         toppings: [],
-                        favorite: false   // Initialize as not favorite
+                        favorite: false
                     });
 
                     // Save the meal and get its ID
@@ -130,9 +147,11 @@ export async function saveUserData(userId, componentsData, mealsData) {
         }
 
         // Update user with new meal IDs
-        await User.findByIdAndUpdate(userId, {
-            $push: { meals: { $each: newMealIds } }
-        });
+        if (newMealIds.length > 0) {
+            await User.findByIdAndUpdate(userId, {
+                $push: { meals: { $each: newMealIds } }
+            });
+        }
 
         // Refetch meals to get the newly created ones
         return fetchUserData(userId);
@@ -144,23 +163,24 @@ export async function saveUserData(userId, componentsData, mealsData) {
     }).lean();
 
     const userFavorites = await Favorite.find({
-        userId: userId,
+        user_id: userId,
     }).lean();
 
     const favoriteMeals = await Meal.find({
-        _id: { $in: userFavorites.map(fav => fav.mealId) },
+        _id: { $in: userFavorites.map(fav => fav.meal_id).filter(id => id) },
     }).lean();
 
     return { 
         favoriteMeals: convertIds(favoriteMeals), 
         userComponents: convertIds(userComponents), 
         userMeals: convertIds(userMeals),
-     };
+        dayInfo: convertIds(nextSevenDays)
+    };
 }
 
 export default async function Dashboard({ params }) {
     const { userId } = await params;
-    const { favoriteMeals, userComponents, userMeals } = await fetchUserData(userId);
+    const { favoriteMeals, userComponents, userMeals, dayInfo } = await fetchUserData(userId);
   
     return (
       <div className="min-h-full bg-gray-100">
@@ -171,8 +191,9 @@ export default async function Dashboard({ params }) {
             meals={userMeals} 
             favorites={favoriteMeals} 
             userId={userId}
+            dayInfo={dayInfo}
           />
         </main>
       </div>
     );
-  }
+}

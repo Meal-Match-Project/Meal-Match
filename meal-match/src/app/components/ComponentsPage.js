@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import ComponentModal from '@/app/components/modals/ComponentModal';
+import { addComponent, updateComponent, deleteComponent } from '@/app/actions/componentActions';
 import { Plus } from 'lucide-react';
 
 export default function ComponentsPage({ userId, components = [] }) {
@@ -41,7 +42,7 @@ export default function ComponentsPage({ userId, components = [] }) {
     setIsModalOpen(true);
   };
 
-  const handleSaveComponent = (updatedComponent) => {
+  const handleSaveComponent = async (updatedComponent) => {
     if (isAdding) {
       // Add userId to the new component
       const newComponent = {
@@ -49,19 +50,101 @@ export default function ComponentsPage({ userId, components = [] }) {
         userId: userId
       };
       
-      // Add to the components array
-      setComponentsData([...componentsData, newComponent]);
+      
+      try {
+        // Call the server action to add component to database
+        const result = await addComponent(newComponent);
+        
+        if (result.success) {
+          // Update local state with the new component
+          setComponentsData(prev => [...prev, result.component]);
+          
+          // If marked as favorite, add to favorites collection
+          if (result.component.favorite) {
+            await fetch('/api/favorites', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                user_id: userId,
+                component_id: result.component._id,
+                type: 'component'
+              })
+            });
+          }
+        } else {
+          console.error("Failed to add component:", result.error);
+        }
+      } catch (error) {
+        console.error("Error adding component:", error);
+      }
     } else {
-      // Update existing component
-      setComponentsData(componentsData.map(comp => 
-        comp._id === updatedComponent._id ? updatedComponent : comp
-      ));
+      try {
+        // Get the previous state of the component to check if favorite status changed
+        const previousComponent = componentsData.find(comp => comp._id === updatedComponent._id);
+        const favoriteChanged = previousComponent && previousComponent.favorite !== updatedComponent.favorite;
+        
+        // Call the server action to update the component
+        const result = await updateComponent(updatedComponent._id, updatedComponent);
+  
+        if (result.success) {
+          // Update local state with the updated component
+          setComponentsData(componentsData.map(comp => 
+            comp._id === updatedComponent._id ? updatedComponent : comp
+          ));
+          
+          // Handle favorite status change
+          if (favoriteChanged) {
+            if (updatedComponent.favorite) {
+              // Add to favorites
+              await fetch('/api/favorites', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  user_id: userId,
+                  component_id: updatedComponent._id,
+                  type: 'component'
+                })
+              });
+            } else {
+              // Remove from favorites - we'll need to get the favorite ID first
+              const favoritesResponse = await fetch(`/api/favorites?userId=${userId}&componentId=${updatedComponent._id}`);
+              const favoritesData = await favoritesResponse.json();
+              
+              if (favoritesData.favorites && favoritesData.favorites.length > 0) {
+                const favoriteId = favoritesData.favorites[0]._id;
+                
+                await fetch(`/api/favorites/${favoriteId}`, {
+                  method: 'DELETE'
+                });
+              }
+            }
+          }
+        } else {
+          console.error("Failed to update component:", result.error);
+        }
+      }
+      catch(error) {
+        console.error("Error updating component:", error);
+      }
     }
+    
     setIsModalOpen(false);
   };
 
-  const handleDeleteComponent = (componentId) => {
-    setComponentsData(componentsData.filter(comp => comp._id !== componentId));
+  const handleDeleteComponent = async (componentId) => {
+    try {
+      const result = await deleteComponent(componentId);
+      if (result.success) {
+        // Remove from local state
+        setComponentsData(componentsData.filter(comp => comp._id !== componentId));
+      }
+      else {
+        console.error("Failed to delete component:", result.error);
+      }
+    }
+    catch (error) {
+      console.error("Error deleting component:", error);
+    }
     setIsModalOpen(false);
   };
 
