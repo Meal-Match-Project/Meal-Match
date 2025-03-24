@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Pencil, Trash2, X } from 'lucide-react';
 
 export default function IngredientModal({ ingredient, onSave, onDelete, onClose, isAdding }) {
@@ -7,29 +7,60 @@ export default function IngredientModal({ ingredient, onSave, onDelete, onClose,
     name: '',
     amount: 1,
     unit: 'unit',
-    status: 'Need to buy',
+    status: 'to-buy',
     shelf_life: 7,
   };
   
   const [editedIngredient, setEditedIngredient] = useState({ ...defaultIngredient, ...ingredient });
   const [isEditing, setIsEditing] = useState(isAdding);
+  const nameInputRef = useRef(null);
+
+  // Focus on name input when modal opens
+  useEffect(() => {
+    if (isAdding && nameInputRef.current) {
+      nameInputRef.current.focus();
+    }
+  }, [isAdding]);
 
   const handleChange = (e, field) => {
-    // Convert number fields from string to number
+    // Convert number fields from string to number and ensure non-negative values
     if (['amount', 'shelf_life'].includes(field)) {
-      setEditedIngredient({ ...editedIngredient, [field]: Number(e.target.value) });
+      const value = Number(e.target.value);
+      // Only update if value is non-negative or empty (for typing)
+      if (value >= 0 || e.target.value === '') {
+        setEditedIngredient({ 
+          ...editedIngredient, 
+          [field]: e.target.value === '' ? '' : value 
+        });
+      }
     } else {
       setEditedIngredient({ ...editedIngredient, [field]: e.target.value });
     }
   };
 
+  // Validate numeric fields before saving
+  const validateAndSave = () => {
+    const numericFields = ['amount', 'shelf_life'];
+    const validatedIngredient = { ...editedIngredient };
+    
+    // Ensure all numeric fields are at least 0
+    numericFields.forEach(field => {
+      if (validatedIngredient[field] === '' || validatedIngredient[field] < 0) {
+        validatedIngredient[field] = 0;
+      }
+    });
+    
+    onSave(validatedIngredient);
+    setIsEditing(false);
+  };
+
   // Mark as bought with today's date
   const markAsBought = () => {
     const today = new Date();
-    const formattedDate = `${today.getMonth() + 1}/${today.getDate()}`;
     setEditedIngredient({ 
       ...editedIngredient, 
-      status: `Bought ${formattedDate}` 
+      status: 'in-stock',
+      purchase_date: today.toISOString()
     });
   };
 
@@ -37,7 +68,8 @@ export default function IngredientModal({ ingredient, onSave, onDelete, onClose,
   const markAsNeedToBuy = () => {
     setEditedIngredient({ 
       ...editedIngredient, 
-      status: 'Need to buy' 
+      status: 'to-buy',
+      purchase_date: null
     });
   };
 
@@ -61,10 +93,12 @@ export default function IngredientModal({ ingredient, onSave, onDelete, onClose,
             <div>
               <p className="text-sm font-semibold">Name</p>             
               <input
+                ref={nameInputRef}
                 type="text"
                 value={editedIngredient.name}
                 onChange={(e) => handleChange(e, 'name')}
-                className="border p-1 w-full rounded-md" 
+                className="border p-1 w-full rounded-md focus:ring-2 focus:ring-orange-500 focus:outline-none"
+                placeholder="e.g., Chicken breast"
               />
             </div>
           }
@@ -78,7 +112,13 @@ export default function IngredientModal({ ingredient, onSave, onDelete, onClose,
                   type="number" 
                   value={editedIngredient.amount} 
                   onChange={(e) => handleChange(e, 'amount')} 
-                  className="border p-1 w-16 rounded-md" 
+                  className="border p-1 w-16 rounded-md focus:ring-2 focus:ring-orange-500 focus:outline-none" 
+                  min="0"
+                  onBlur={() => {
+                    if (editedIngredient.amount === '' || editedIngredient.amount < 0) {
+                      setEditedIngredient({...editedIngredient, amount: 0});
+                    }
+                  }}
                 />
               ) : (
                 <p>{editedIngredient.amount}</p>
@@ -91,7 +131,7 @@ export default function IngredientModal({ ingredient, onSave, onDelete, onClose,
                 <select
                   value={editedIngredient.unit}
                   onChange={(e) => handleChange(e, 'unit')}
-                  className="border p-1 rounded-md"
+                  className="border p-1 rounded-md focus:ring-2 focus:ring-orange-500 focus:outline-none"
                 >
                   <option value="unit">unit</option>
                   <option value="oz">oz</option>
@@ -116,21 +156,26 @@ export default function IngredientModal({ ingredient, onSave, onDelete, onClose,
                 <div className="flex gap-2">
                   <button 
                     onClick={markAsBought}
-                    className={`px-3 py-1 rounded ${editedIngredient.status.startsWith('Bought') ? 'bg-green-500 text-white' : 'bg-gray-200'}`}
+                    className={`px-3 py-1 rounded ${editedIngredient.status === 'in-stock' ? 'bg-green-500 text-white' : 'bg-gray-200'}`}
                   >
                     Mark as Bought
                   </button>
                   <button 
                     onClick={markAsNeedToBuy}
-                    className={`px-3 py-1 rounded ${editedIngredient.status === 'Need to buy' ? 'bg-yellow-500 text-white' : 'bg-gray-200'}`}
+                    className={`px-3 py-1 rounded ${editedIngredient.status === 'to-buy' ? 'bg-yellow-500 text-white' : 'bg-gray-200'}`}
                   >
                     Need to Buy
                   </button>
                 </div>
               </div>
             ) : (
-              <p className={`${editedIngredient.status.startsWith('Bought') ? 'text-green-500' : 'text-yellow-500'} font-medium`}>
-                {editedIngredient.status}
+              <p className={`${editedIngredient.status === 'in-stock' ? 'text-green-500' : 'text-yellow-500'} font-medium`}>
+                {editedIngredient.status === 'in-stock' ? 'In Stock' : 'Need to Buy'}
+                {editedIngredient.purchase_date && (
+                  <span className="text-xs ml-2 text-gray-500">
+                    (Purchased: {new Date(editedIngredient.purchase_date).toLocaleDateString()})
+                  </span>
+                )}
               </p>
             )}
           </div>
@@ -143,7 +188,13 @@ export default function IngredientModal({ ingredient, onSave, onDelete, onClose,
                 type="number" 
                 value={editedIngredient.shelf_life} 
                 onChange={(e) => handleChange(e, 'shelf_life')} 
-                className="border p-1 w-16 rounded-md" 
+                className="border p-1 w-16 rounded-md focus:ring-2 focus:ring-orange-500 focus:outline-none" 
+                min="0"
+                onBlur={() => {
+                  if (editedIngredient.shelf_life === '' || editedIngredient.shelf_life < 0) {
+                    setEditedIngredient({...editedIngredient, shelf_life: 0});
+                  }
+                }}
               />
             ) : (
               <p>{editedIngredient.shelf_life} days</p>
@@ -170,7 +221,7 @@ export default function IngredientModal({ ingredient, onSave, onDelete, onClose,
                   Cancel
                 </button>
                 <button 
-                  onClick={() => { onSave(editedIngredient); setIsEditing(false); }} 
+                  onClick={validateAndSave} 
                   className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md transition"
                 >
                   {isAdding ? 'Add' : 'Save'}

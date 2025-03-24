@@ -1,14 +1,33 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Heart } from 'lucide-react';
 
 export default function SaveMealModal({ isOpen, onClose, onSave, mealId, mealComponents, mealToppings, userId, existingMeal = null }) {
-  // Initialize state with existing meal data if editing
-  const [title, setTitle] = useState(existingMeal?.name || '');
-  const [notes, setNotes] = useState(existingMeal?.notes || '');
-  const [isFavorite, setIsFavorite] = useState(existingMeal?.favorite || false);
+  // Get the existing meal data from the parent component
+  const [currentMeal, setCurrentMeal] = useState(null);
+  const [title, setTitle] = useState('');
+  const [notes, setNotes] = useState('');
+  const [isFavorite, setIsFavorite] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+  // Update form state when the modal opens or existingMeal changes
+  useEffect(() => {
+    if (isOpen) {
+      // If we have an existing meal, use its data
+      if (existingMeal) {
+        setCurrentMeal(existingMeal);
+        setTitle(existingMeal.name || '');
+        setNotes(existingMeal.notes || '');
+        setIsFavorite(existingMeal.favorite || false);
+      } else {
+        // Otherwise, look for the meal in meals data by ID
+        setTitle('');
+        setNotes('');
+        setIsFavorite(false);
+      }
+    }
+  }, [isOpen, existingMeal, mealId]);
 
   if (!isOpen) return null;
 
@@ -22,17 +41,17 @@ export default function SaveMealModal({ isOpen, onClose, onSave, mealId, mealCom
     setError('');
 
     try {
-      // 1. First update the meal data
+      // Prepare the meal data with correct favorite status
       const mealData = {
         _id: mealId,
         name: title,
         notes,
         components: mealComponents,
         toppings: mealToppings,
-        favorite: isFavorite
+        favorite: isFavorite, // Use the state variable
       };
 
-      // Call the parent component's save handler
+      // Call the parent component's save handler with the favorite status
       await onSave(mealData, isFavorite);
       
       // Reset form
@@ -117,17 +136,22 @@ export default function SaveMealModal({ isOpen, onClose, onSave, mealId, mealCom
           ></textarea>
         </div>
 
-        {/* Favorite Toggle */}
-        <div className="mb-6">
-          <button 
-            className="flex items-center gap-2 px-3 py-2 border rounded hover:bg-gray-50"
-            onClick={toggleFavorite}
-          >
-            <Heart 
-              className={`w-5 h-5 ${isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-400'}`} 
+        {/* Add Favorite Toggle */}
+        <div className="mb-4">
+          <label className="flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              checked={isFavorite}
+              onChange={toggleFavorite}
+              className="h-5 w-5 text-orange-600"
             />
-            <span>{isFavorite ? 'Added to Favorites' : 'Add to Favorites'}</span>
-          </button>
+            <span className="ml-2 flex items-center">
+              Save as Favorite
+              <Heart 
+                className={`ml-2 h-5 w-5 ${isFavorite ? 'text-red-500 fill-red-500' : 'text-gray-400'}`}
+              />
+            </span>
+          </label>
         </div>
 
         {/* Save/Cancel Buttons */}

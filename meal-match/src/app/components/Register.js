@@ -47,6 +47,7 @@ const Register = () => {
   const [errors, setErrors] = useState({});
   const [successMessage, setSuccessMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasSubmitted, setHasSubmitted] = useState(false); // Track if form has been submitted at least once
 
   // Validation patterns based on User schema
   const validations = {
@@ -63,12 +64,19 @@ const Register = () => {
         if (newErrors[key] && 
             ((Array.isArray(formData[key]) && formData[key].length > 0) || 
              (!Array.isArray(formData[key]) && formData[key] !== ""))) {
-          delete newErrors[key];
+          // For email, only clear if it's valid or we haven't submitted yet
+          if (key === 'email' && !hasSubmitted) {
+            delete newErrors[key];
+          } else if (key === 'email' && validations.email.test(formData[key])) {
+            delete newErrors[key];
+          } else if (key !== 'email') {
+            delete newErrors[key];
+          }
         }
       });
       setErrors(newErrors);
     }
-  }, [formData]);
+  }, [formData, hasSubmitted]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -113,11 +121,9 @@ const Register = () => {
     
     setFormData({ ...formData, [name]: value });
     
-    // Real-time validation for select fields
-    if (name === 'email' || name === 'password') {
-      if (name === 'email' && value && !validations.email.test(value)) {
-        setErrors(prev => ({ ...prev, email: "Please enter a valid email address" }));
-      } else if (name === 'password' && value && !validations.password.test(value)) {
+    // Real-time validation only for password, not email
+    if (name === 'password' && value) {
+      if (!validations.password.test(value)) {
         setErrors(prev => ({ 
           ...prev, 
           password: "Password must contain at least 1 uppercase letter, 1 lowercase letter, 1 number, and a special character" 
@@ -125,7 +131,7 @@ const Register = () => {
       } else {
         setErrors(prev => {
           const newErrors = { ...prev };
-          delete newErrors[name];
+          delete newErrors.password;
           return newErrors;
         });
       }
@@ -171,6 +177,7 @@ const Register = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSuccessMessage("");
+    setHasSubmitted(true); // Mark that the form has been submitted
     
     // Validate all fields before submission
     if (!validateForm()) {
@@ -300,7 +307,7 @@ const Register = () => {
                 errors.email ? 'border-red-500' : ''
               }`}
             />
-            {errors.email && (
+            {errors.email && hasSubmitted && (
               <p className="text-red-500 text-sm mt-1">{errors.email}</p>
             )}
           </div>
@@ -316,7 +323,7 @@ const Register = () => {
                 errors.password ? 'border-red-500' : ''
               }`}
             />
-            {errors.password && (
+            {errors.password && hasSubmitted && (
               <p className="text-red-500 text-sm mt-1">{errors.password}</p>
             )}
             <div className="mt-2 text-xs text-gray-600">

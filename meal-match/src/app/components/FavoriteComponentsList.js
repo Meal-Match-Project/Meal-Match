@@ -37,6 +37,12 @@ export default function FavoriteComponentsList({ userId, favoriteComponents }) {
     setIsModalOpen(false);
   };
   
+  // Helper to ensure number display is correct
+  const formatNumber = (num) => {
+    const numValue = parseFloat(num);
+    return isNaN(numValue) ? 0 : numValue;
+  };
+  
   return (
     <div>
       {components.length === 0 ? (
@@ -55,9 +61,9 @@ export default function FavoriteComponentsList({ userId, favoriteComponents }) {
                 <div>
                   <h3 className="font-medium text-lg">{component.name}</h3>
                   <div className="flex text-sm text-gray-600 space-x-2">
-                    <span>Servings: {component.servings}</span>
-                    {component.prep_time && <span>• {component.prep_time} min prep</span>}
-                    {component.calories > 0 && <span>• {component.calories} cal</span>}
+                    <span>Servings: {formatNumber(component.servings)}</span>
+                    {component.prep_time > 0 && <span>• {formatNumber(component.prep_time)} min prep</span>}
+                    {component.calories > 0 && <span>• {formatNumber(component.calories)} cal</span>}
                   </div>
                 </div>
                 <span className="text-gray-400">→</span>
@@ -70,8 +76,16 @@ export default function FavoriteComponentsList({ userId, favoriteComponents }) {
       {/* Modal for viewing component details */}
       {isModalOpen && selectedComponent && (
         <ComponentModal
-          component={selectedComponent}
-          onSave={() => {}} // Not editing in this view
+          component={{
+            ...selectedComponent,
+            servings: formatNumber(selectedComponent.servings),
+            prep_time: formatNumber(selectedComponent.prep_time),
+            calories: formatNumber(selectedComponent.calories),
+            protein: formatNumber(selectedComponent.protein),
+            carbs: formatNumber(selectedComponent.carbs),
+            fat: formatNumber(selectedComponent.fat)
+          }}
+          onSave={() => {}}
           onDelete={() => handleRemoveFavorite(selectedComponent._id)}
           onClose={handleCloseModal}
           isAdding={false}

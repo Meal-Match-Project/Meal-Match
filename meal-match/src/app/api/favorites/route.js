@@ -1,113 +1,94 @@
-import { NextResponse } from 'next/server';
-import connect from '@/lib/mongodb';
-import Favorite from '@/models/Favorites';
-import Meal from '@/models/Meals';
-import Component from '@/models/Components';
-
-// Helper to convert ObjectIds
-function convertIds(docs) {
-    return JSON.parse(JSON.stringify(docs, (key, value) => {
-      if ((key === '_id' || key === 'userId' || key === 'mealId' || 
-           key === 'user_id' || key === 'meal_id' || key === 'component_id') && value) {
-        return value.toString();
-      }
-      if (value instanceof Date) {
-        return value.toISOString();
-      }
-      return value;
-    }));
-  }
+import connect from "@/lib/mongodb";
+import Favorite from "@/models/Favorites";
+import { NextResponse } from "next/server";
 
 export async function POST(request) {
   try {
-    const { user_id, meal_id, component_id, type } = await request.json();
-    
-    if (!user_id || (!meal_id && !component_id) || !type) {
-      return NextResponse.json({ 
-        error: 'Missing required fields' 
-      }, { status: 400 });
-    }
-    
     await connect();
+    const body = await request.json();
     
-    // Check if this favorite already exists
-    const query = { 
-      user_id, 
-      type,
-      ...(meal_id ? { meal_id } : {}),
-      ...(component_id ? { component_id } : {})
-    };
+    // Validate required fields
+    if (!body.user_id || !body.meal_id) {
+      return NextResponse.json(
+        { error: "Missing required fields: user_id and meal_id" },
+        { status: 400 }
+      );
+    }
     
-    const existingFavorite = await Favorite.findOne(query);
+    // First check if this favorite already exists
+    const existingFavorite = await Favorite.findOne({
+      user_id: body.user_id,
+      meal_id: body.meal_id
+    });
     
+    // If it already exists, return success without duplicating
     if (existingFavorite) {
-      // Already favorited - nothing to do
-      return NextResponse.json({ success: true, favorite: convertIds(existingFavorite) });
-    }
-    
-    // Create new favorite
-    const newFavorite = await Favorite.create({
-        user_id,
-        meal_id: meal_id || null,
-        component_id: component_id || null,
-        type: meal_id ? 'meal' : 'component'  // Set a default based on IDs if not provided
+      return NextResponse.json({ 
+        success: true, 
+        message: "Favorite already exists", 
+        favorite: existingFavorite 
       });
-    
-    // If it's a meal, update the meal's favorite field
-    if (type === 'meal' && meal_id) {
-      await Meal.findByIdAndUpdate(meal_id, { favorite: true });
     }
     
-    // If it's a component, update the component's favorite field
-    if (type === 'component' && component_id) {
-      await Component.findByIdAndUpdate(component_id, { favorite: true });
+    // Otherwise create a new favorite
+    const favorite = new Favorite({
+      user_id: body.user_id,
+      meal_id: body.meal_id,
+      type: body.type || 'meal',
+      created_at: new Date()
+    });
+    
+    await favorite.save();
+    
+    return NextResponse.json({ 
+      success: true, 
+      message: "Favorite saved successfully", 
+      favorite 
+    });
+  } catch (error) {
+    console.error("Error saving favorite:", error);
+    return NextResponse.json(
+      { error: "Failed to save favorite: " + error.message },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request) {
+  try {
+    await connect();
+    const body = await request.json();
+    
+    // Validate required fields
+    if (!body.user_id || !body.meal_id) {
+      return NextResponse.json(
+        { error: "Missing required fields: user_id and meal_id" },
+        { status: 400 }
+      );
+    }
+    
+    // Delete the favorite
+    const result = await Favorite.findOneAndDelete({
+      user_id: body.user_id,
+      meal_id: body.meal_id
+    });
+    
+    if (!result) {
+      return NextResponse.json(
+        { error: "Favorite not found" },
+        { status: 404 }
+      );
     }
     
     return NextResponse.json({ 
       success: true, 
-      favorite: convertIds(newFavorite)
+      message: "Favorite removed successfully"
     });
   } catch (error) {
-    console.error('Error saving favorite:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("Error removing favorite:", error);
+    return NextResponse.json(
+      { error: "Failed to remove favorite: " + error.message },
+      { status: 500 }
+    );
   }
 }
-
-export async function GET(request) {
-    try {
-      const { searchParams } = new URL(request.url);
-      const userId = searchParams.get('userId');
-      const mealId = searchParams.get('mealId');
-      const componentId = searchParams.get('componentId');
-      
-      if (!userId) {
-        return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
-      }
-      
-      await connect();
-      
-      // Build the query based on provided parameters
-      let query = { user_id: userId };
-      
-      if (mealId) {
-        query.meal_id = mealId;
-        query.type = 'meal';
-      }
-      
-      if (componentId) {
-        query.component_id = componentId;
-        query.type = 'component';
-      }
-      
-      // Get matching favorites
-      const favorites = await Favorite.find(query).lean();
-      
-      return NextResponse.json({ 
-        success: true, 
-        favorites: convertIds(favorites)
-      });
-    } catch (error) {
-      console.error('Error fetching favorites:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-  }

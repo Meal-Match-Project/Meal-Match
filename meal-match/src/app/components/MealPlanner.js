@@ -167,6 +167,21 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
 
   // Clearing a meal from the grid
   const handleClearMeal = (mealId) => {
+    // Restore one serving to each component used in the meal
+    const restoredComponents = mealsData.find((meal) => meal._id === mealId)?.components || [];
+    restoredComponents.forEach((compName) => {
+      const compIndex = componentsData.findIndex((comp) => comp.name === compName);
+      if (compIndex !== -1) {
+        setComponentsData((prev) => {
+          const updated = [...prev];
+          updated[compIndex] = {
+            ...updated[compIndex],
+            servings: updated[compIndex].servings + 1,
+          };
+          return updated;
+        });
+      }
+    });
     setMealsData((prev) => 
       prev.map((meal) => 
         meal._id === mealId
@@ -181,6 +196,8 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
           : meal
       )
     );
+
+
     
     markSaveNeeded();
   };
@@ -301,6 +318,8 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
 
   const handleSaveMeal = async (mealData, isFavorite) => {
     try {
+      console.log('Saving meal with favorite status:', isFavorite);
+      
       // 1. First save/update the meal
       const mealResponse = await fetch(`/api/meals/${mealData._id || 'new'}`, {
         method: mealData._id ? 'PUT' : 'POST',
@@ -308,6 +327,7 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
         body: JSON.stringify({
           ...mealData,
           userId, // Make sure userId is included
+          favorite: isFavorite // Set the favorite status on the meal itself
         })
       });
       
@@ -317,9 +337,11 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
       
       const savedMeal = await mealResponse.json();
       const mealId = savedMeal.meal._id;
-      
-      // 2. Handle favorite status
+  
+      // 2. Handle favorite status in the favorites collection
       if (isFavorite) {
+        // Add to favorites
+        console.log('Adding to favorites:', userId, mealId);
         const favoriteResponse = await fetch('/api/favorites', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -331,7 +353,32 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
         });
         
         if (!favoriteResponse.ok) {
-          console.warn('Failed to save as favorite');
+          const errorData = await favoriteResponse.json();
+          console.warn('Failed to save as favorite:', errorData);
+        } else {
+          // If successful, also add to local favoritesData
+          const existingFavorite = favoritesData.find(f => f._id === mealId);
+          if (!existingFavorite) {
+            setFavoritesData(prev => [...prev, savedMeal.meal]);
+          }
+        }
+      } else {
+        // Remove from favorites if it was previously favorited
+        console.log('Removing from favorites if needed');
+        const favoriteResponse = await fetch('/api/favorites', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: userId,
+            meal_id: mealId
+          })
+        });
+        
+        if (!favoriteResponse.ok) {
+          console.warn('Error removing from favorites');
+        } else {
+          // Remove from local favoritesData
+          setFavoritesData(prev => prev.filter(f => f._id !== mealId));
         }
       }
       
@@ -339,9 +386,18 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
       setMealsData(prev => {
         const exists = prev.some(m => m._id === mealId);
         if (exists) {
-          return prev.map(m => m._id === mealId ? { ...m, ...mealData, _id: mealId } : m);
+          return prev.map(m => m._id === mealId ? { 
+            ...m, 
+            ...mealData, 
+            _id: mealId,
+            favorite: isFavorite // Make sure favorite status is set
+          } : m);
         } else {
-          return [...prev, { ...mealData, _id: mealId }];
+          return [...prev, { 
+            ...mealData, 
+            _id: mealId,
+            favorite: isFavorite 
+          }];
         }
       });
       
@@ -403,35 +459,50 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
   };
 
   // Remove a single component from a meal slot
-  const handleRemoveComponent = (mealId, index, componentName) => {
-    // Remove from mealsData
+  const handleRemoveComponent = (mealId, index, itemName, type = 'component') => {
+    // Remove from mealsData based on type
     setMealsData((prev) => {
-      const updatedMeals = prev.map((meal) =>
-        meal._id === mealId
-          ? {
+      const updatedMeals = prev.map((meal) => {
+        if (meal._id === mealId) {
+          if (type === 'topping') {
+            // Remove from toppings array
+            return {
+              ...meal,
+              toppings: meal.toppings.filter(
+                (topping, toppingIndex) => toppingIndex !== index
+              ),
+            };
+          } else {
+            // Remove from components array
+            return {
               ...meal,
               components: meal.components.filter(
                 (comp, compIndex) => compIndex !== index
               ),
-            }
-          : meal
-      );
+            };
+          }
+        }
+        return meal;
+      });
       return updatedMeals;
     });
-
-    // Restore a serving to componentsData
-    const compIndex = componentsData.findIndex(
-      (comp) => comp.name === componentName
-    );
-    if (compIndex !== -1) {
-      setComponentsData((prev) => {
-        const updated = [...prev];
-        updated[compIndex] = {
-          ...updated[compIndex],
-          servings: updated[compIndex].servings + 1,
-        };
-        return updated;
-      });
+  
+    // Only restore servings if removing an actual component, not a topping
+    if (type !== 'topping') {
+      // Restore a serving to componentsData
+      const compIndex = componentsData.findIndex(
+        (comp) => comp.name === itemName
+      );
+      if (compIndex !== -1) {
+        setComponentsData((prev) => {
+          const updated = [...prev];
+          updated[compIndex] = {
+            ...updated[compIndex],
+            servings: updated[compIndex].servings + 1,
+          };
+          return updated;
+        });
+      }
     }
     
     markSaveNeeded();

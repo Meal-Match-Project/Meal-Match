@@ -156,7 +156,7 @@ export default function IngredientsPage({ userId, ingredients = [] }) {
       <h1 className="text-2xl font-bold text-orange-600 mb-4">Ingredients</h1>
       
       <div className="max-w-3xl mx-auto">
-        {/* Search Bar */}
+        {/* Search Bar
         <div className="mb-4 relative">
           <input
             type="text"
@@ -178,7 +178,7 @@ export default function IngredientsPage({ userId, ingredients = [] }) {
               <X className="h-5 w-5" />
             </button>
           )}
-        </div>
+        </div> */}
         
         {/* Tabs */}
         <div className="flex border-b border-gray-200 mb-4">

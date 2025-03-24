@@ -30,12 +30,35 @@ export default function ComponentModal({ component, onSave, onDelete, onClose, i
   }, [isAdding]);
 
   const handleChange = (e, field) => {
-    // Convert number fields from string to number
+    // Convert number fields from string to number and ensure non-negative values
     if (['servings', 'prep_time', 'calories', 'protein', 'carbs', 'fat'].includes(field)) {
-      setEditedComponent({ ...editedComponent, [field]: Number(e.target.value) });
+      const value = Number(e.target.value);
+      // Only update if value is non-negative
+      if (value >= 0 || e.target.value === '') {
+        setEditedComponent({ 
+          ...editedComponent, 
+          [field]: e.target.value === '' ? '' : value 
+        });
+      }
     } else {
       setEditedComponent({ ...editedComponent, [field]: e.target.value });
     }
+  };
+
+  // Before saving, ensure all numeric fields have valid values (at least 0)
+  const validateAndSave = () => {
+    const numericFields = ['servings', 'prep_time', 'calories', 'protein', 'carbs', 'fat'];
+    const validatedComponent = { ...editedComponent };
+    
+    // Ensure all numeric fields are at least 0
+    numericFields.forEach(field => {
+      if (validatedComponent[field] === '' || validatedComponent[field] < 0) {
+        validatedComponent[field] = 0;
+      }
+    });
+    
+    onSave(validatedComponent);
+    setIsEditing(false);
   };
 
   const toggleFavorite = () => {
@@ -45,8 +68,7 @@ export default function ComponentModal({ component, onSave, onDelete, onClose, i
   const handleKeyDown = (e) => {
     // Save on Ctrl+Enter or Command+Enter
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-      onSave(editedComponent);
-      setIsEditing(false);
+      validateAndSave();
     }
     // Close on Escape
     if (e.key === 'Escape') {
@@ -97,7 +119,12 @@ export default function ComponentModal({ component, onSave, onDelete, onClose, i
                   value={editedComponent.servings} 
                   onChange={(e) => handleChange(e, 'servings')} 
                   className="border p-1 w-24 rounded-md focus:ring-2 focus:ring-orange-500 focus:outline-none" 
-                  min="1"
+                  min="0"
+                  onBlur={() => {
+                    if (editedComponent.servings === '' || editedComponent.servings < 0) {
+                      setEditedComponent({...editedComponent, servings: 0});
+                    }
+                  }}
                 />
               </div>
             )}
@@ -173,6 +200,12 @@ export default function ComponentModal({ component, onSave, onDelete, onClose, i
                         value={editedComponent.prep_time} 
                         onChange={(e) => handleChange(e, 'prep_time')} 
                         className="border p-1 w-full rounded-md focus:ring-2 focus:ring-orange-500 focus:outline-none mt-1" 
+                        min="0"
+                        onBlur={() => {
+                          if (editedComponent.prep_time === '' || editedComponent.prep_time < 0) {
+                            setEditedComponent({...editedComponent, prep_time: 0});
+                          }
+                        }}
                       />
                     ) : (
                       <p className="text-sm">{editedComponent.prep_time} minutes</p>
@@ -200,6 +233,12 @@ export default function ComponentModal({ component, onSave, onDelete, onClose, i
                         value={editedComponent.calories} 
                         onChange={(e) => handleChange(e, 'calories')} 
                         className="border p-1 w-full rounded-md focus:ring-2 focus:ring-orange-500 focus:outline-none mt-1" 
+                        min="0"
+                        onBlur={() => {
+                          if (editedComponent.calories === '' || editedComponent.calories < 0) {
+                            setEditedComponent({...editedComponent, calories: 0});
+                          }
+                        }}
                       />
                     </div>
                     <div>
@@ -209,6 +248,12 @@ export default function ComponentModal({ component, onSave, onDelete, onClose, i
                         value={editedComponent.protein} 
                         onChange={(e) => handleChange(e, 'protein')} 
                         className="border p-1 w-full rounded-md focus:ring-2 focus:ring-orange-500 focus:outline-none mt-1" 
+                        min="0"
+                        onBlur={() => {
+                          if (editedComponent.protein === '' || editedComponent.protein < 0) {
+                            setEditedComponent({...editedComponent, protein: 0});
+                          }
+                        }}
                       />
                     </div>
                     <div>
@@ -218,6 +263,12 @@ export default function ComponentModal({ component, onSave, onDelete, onClose, i
                         value={editedComponent.carbs} 
                         onChange={(e) => handleChange(e, 'carbs')} 
                         className="border p-1 w-full rounded-md focus:ring-2 focus:ring-orange-500 focus:outline-none mt-1" 
+                        min="0"
+                        onBlur={() => {
+                          if (editedComponent.carbs === '' || editedComponent.carbs < 0) {
+                            setEditedComponent({...editedComponent, carbs: 0});
+                          }
+                        }}
                       />
                     </div>
                     <div>
@@ -227,6 +278,12 @@ export default function ComponentModal({ component, onSave, onDelete, onClose, i
                         value={editedComponent.fat} 
                         onChange={(e) => handleChange(e, 'fat')} 
                         className="border p-1 w-full rounded-md focus:ring-2 focus:ring-orange-500 focus:outline-none mt-1" 
+                        min="0"
+                        onBlur={() => {
+                          if (editedComponent.fat === '' || editedComponent.fat < 0) {
+                            setEditedComponent({...editedComponent, fat: 0});
+                          }
+                        }}
                       />
                     </div>
                   </div>
@@ -315,7 +372,7 @@ export default function ComponentModal({ component, onSave, onDelete, onClose, i
                   Cancel
                 </button>
                 <button 
-                  onClick={() => { onSave(editedComponent); setIsEditing(false); }} 
+                  onClick={validateAndSave} 
                   className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md transition"
                 >
                   {isAdding ? 'Add' : 'Save'}
