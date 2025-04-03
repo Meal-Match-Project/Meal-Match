@@ -61,8 +61,34 @@ export default function ComponentModal({ component, onSave, onDelete, onClose, i
     setIsEditing(false);
   };
 
-  const toggleFavorite = () => {
+  const toggleFavorite = async () => {
+    // Toggle the local state for immediate feedback
     setEditedComponent({ ...editedComponent, favorite: !editedComponent.favorite });
+    
+    if (!editedComponent._id) return; // Skip if component has no ID yet
+    
+    try {
+      if (!editedComponent.favorite) {
+        // Add to favorites
+        await fetch('/api/favorites/component', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: editedComponent.userId,
+            componentId: editedComponent._id
+          })
+        });
+      } else {
+        // Remove from favorites
+        await fetch(`/api/favorites/component?componentId=${editedComponent._id}&userId=${editedComponent.userId}`, {
+          method: 'DELETE'
+        });
+      }
+    } catch (error) {
+      console.error("Error toggling favorite status:", error);
+      // Revert the local state change if the API call failed
+      setEditedComponent({ ...editedComponent, favorite: !editedComponent.favorite });
+    }
   };
 
   const handleKeyDown = (e) => {

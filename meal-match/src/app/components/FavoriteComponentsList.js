@@ -21,15 +21,15 @@ export default function FavoriteComponentsList({ userId, favoriteComponents }) {
   const handleRemoveFavorite = async (componentId) => {
     try {
       // Remove the favorite from database
-      const response = await fetch(`/api/favorites/component/${componentId}`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId })
+      const response = await fetch(`/api/favorites/component?componentId=${componentId}&userId=${userId}`, {
+        method: 'DELETE'
       });
       
       if (response.ok) {
         // Remove from local state
         setComponents(components.filter(comp => comp._id !== componentId));
+      } else {
+        console.error('Failed to remove favorite:', await response.json());
       }
     } catch (error) {
       console.error('Error removing favorite:', error);

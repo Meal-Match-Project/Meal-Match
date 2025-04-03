@@ -16,7 +16,7 @@ export default function MealGrid({
   }) {
     // Use dynamic days from dayInfo, or fallback to default days if not provided
     const days = dayInfo.length === 7 
-      ? dayInfo.map(day => ({ display: day.display, name: day.name }))
+      ? dayInfo.map(day => ({ date: new Date(day.date).getDate(), display: day.display, name: day.name }))
       : [
           { display: 'Today', name: new Date().toLocaleDateString('en-US', { weekday: 'long' }) },
           ...Array(6).fill().map((_, i) => {
@@ -41,6 +41,9 @@ export default function MealGrid({
               <h2 className="text-lg font-bold text-center">
                 {day.display}
               </h2>
+              <h1 className="text-sm text-center">
+                {day.date}
+              </h1>
               <div className="space-y-4 mt-2">
                 {mealTypes.map((mealType) => {
                   // Find the meal document that matches this day and meal type

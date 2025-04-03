@@ -1,0 +1,243 @@
+"use server";
+
+import { Mistral } from "@mistralai/mistralai";
+import { getUserComponentData } from "./getUserComponentData";
+
+const apiKey = process.env.MISTRAL_API_KEY;
+const mistral = new Mistral({ apiKey });
+
+/**
+ * Helper function to extract JSON from a potentially Markdown-formatted response
+ * or convert plain text to a valid response format
+ * @param {string} content - The raw content from the API
+ * @returns {object} Parsed JSON object or formatted response object
+ */
+function extractJsonFromResponse(content) {
+  // First, try to extract JSON from a Markdown code block
+  if (content.includes("```")) {
+    // Extract content between code block markers
+    const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (jsonMatch && jsonMatch[1]) {
+      try {
+        return JSON.parse(jsonMatch[1].trim());
+      } catch (e) {
+        console.log("Failed to parse JSON from code block, trying alternative methods");
+      }
+    }
+  }
+  
+  // Second, try to parse the whole content as JSON
+  try {
+    return JSON.parse(content);
+  } catch (e) {
+    // If both methods fail, it's likely plain text - convert to our expected format
+    console.log("Response appears to be plain text, converting to structured format");
+    
+    // Check if the response appears to contain meal recommendations
+    const containsRecommendations = 
+      content.includes("meal") || 
+      content.includes("recipe") || 
+      content.includes("dish") ||
+      content.includes("ingredients");
+      
+    // Extract any potential meal names using regex
+    const mealNameRegex = /"([^"]+)"/g;
+    const potentialMealNames = [];
+    let match;
+    
+    while ((match = mealNameRegex.exec(content)) !== null) {
+      potentialMealNames.push(match[1]);
+    }
+    
+    // If no quoted meal names, look for lines that might be meal titles
+    const lines = content.split('\n');
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+      // Lines that look like titles (not too long, no punctuation at end)
+      if (trimmedLine && 
+          trimmedLine.length > 3 && 
+          trimmedLine.length < 50 && 
+          !trimmedLine.endsWith('.') &&
+          !trimmedLine.includes(':') &&
+          (
+            trimmedLine.startsWith('1.') || 
+            trimmedLine.startsWith('2.') || 
+            trimmedLine.startsWith('3.') ||
+            trimmedLine.startsWith('-') ||
+            /^[A-Z]/.test(trimmedLine) // Starts with capital letter
+          )) {
+        potentialMealNames.push(trimmedLine.replace(/^[0-9.-]\s*/, ''));
+      }
+    }
+    
+    // Create a structured response
+    if (containsRecommendations && potentialMealNames.length > 0) {
+      // The response contains what looks like meal recommendations
+      return {
+        message: content,
+        recommendations: potentialMealNames.slice(0, 3).map(name => ({
+          mealName: name,
+          components: [],
+          additionalIngredients: [],
+          preparationInstructions: "See full response for details.",
+          nutritionalInfo: {
+            calories: 0,
+            protein: 0,
+            carbs: 0,
+            fat: 0
+          }
+        }))
+      };
+    } else {
+      // Just a regular text response
+      return {
+        message: content
+      };
+    }
+  }
+}
+
+/**
+ * Gets AI meal recommendations based on available components and user preferences
+ * @param {string} userId - The ID of the user
+ * @returns {Promise<Object>} Meal recommendations from the AI
+ */
+export async function getMealRecommendations(userId) {
+  try {
+    // Get the user's component data and dietary info
+    const userData = await getUserComponentData(userId);
+    
+    // Create a prompt for the AI
+    const prompt = `
+      You are a helpful meal planning assistant. Based on the components the user has available,
+      suggest 3 different meals they could make. Consider their dietary preferences and allergies.
+      
+      Available Components:
+      ${JSON.stringify(userData.components, null, 2)}
+      
+      User Dietary Preferences: ${userData.userDietaryInfo.preferences.join(', ') || 'None specified'}
+      User Allergies: ${userData.userDietaryInfo.allergies.join(', ') || 'None specified'}
+      
+      For each meal suggestion, provide:
+      1. A name for the meal
+      2. Which components from their available list to use
+      3. Any additional ingredients they might need
+      4. Brief preparation instructions
+      5. Approximate nutritional information
+      
+      Return your response as a JSON object with this structure:
+      {
+        "recommendations": [
+          {
+            "mealName": "Name of meal",
+            "components": ["Component 1", "Component 2"],
+            "additionalIngredients": ["Ingredient 1", "Ingredient 2"],
+            "preparationInstructions": "Step-by-step instructions",
+            "nutritionalInfo": {
+              "calories": 0,
+              "protein": 0,
+              "carbs": 0,
+              "fat": 0
+            }
+          }
+        ]
+      }
+      
+      It's extremely important you return valid JSON. Do not include any Markdown formatting, just return the raw JSON.
+    `;
+    
+    // Get recommendations from Mistral
+    const response = await mistral.chat.complete({
+      model: "mistral-large-latest",
+      messages: [{ role: 'user', content: prompt }],
+      response_format: { type: 'json_object' }
+    });
+
+    // Extract and parse the JSON, handling cases where the API returns Markdown
+    const responseContent = response.choices[0].message.content;
+    console.log("Raw API response:", responseContent);
+    
+    const recommendations = extractJsonFromResponse(responseContent);
+    return recommendations;
+  } catch (error) {
+    console.error("Error generating meal recommendations:", error);
+    throw new Error(`Failed to generate meal recommendations: ${error.message}`);
+  }
+}
+
+/**
+ * Handles follow-up questions and continuing conversations about meal recommendations
+ * @param {string} userId - The ID of the user
+ * @param {Array} chatHistory - Previous messages in the conversation
+ * @returns {Promise<Object>} Response from the AI
+ */
+export async function getMealRecommendationChat(userId, chatHistory) {
+  try {
+    // Get the user's component data for context
+    const userData = await getUserComponentData(userId);
+    
+    // Create a system message with context about available components
+    const systemMessage = {
+      role: 'system',
+      content: `You are a helpful meal planning assistant helping a user plan meals.
+      
+The user has the following components available:
+${JSON.stringify(userData.components.map(c => c.name), null, 2)}
+
+User dietary preferences: ${userData.userDietaryInfo.preferences.join(', ') || 'None specified'}
+User allergies: ${userData.userDietaryInfo.allergies.join(', ') || 'None specified'}
+
+When suggesting meals, try to follow this JSON structure for recommendations:
+{
+  "message": "Your message to the user",
+  "recommendations": [
+    {
+      "mealName": "Name of meal",
+      "components": ["Component 1", "Component 2"],
+      "additionalIngredients": ["Ingredient 1", "Ingredient 2"],
+      "preparationInstructions": "Step-by-step instructions",
+      "nutritionalInfo": {
+        "calories": 0,
+        "protein": 0,
+        "carbs": 0,
+        "fat": 0
+      }
+    }
+  ]
+}
+
+However, if you need to respond more conversationally, that's okay too. Just make sure your message is helpful and relevant to the user's needs.`
+    };
+    
+    // Prepare messages for the API call
+    const messages = [systemMessage, ...chatHistory];
+    
+    // Get response from Mistral
+    const response = await mistral.chat.complete({
+      model: "mistral-large-latest",
+      messages: messages,
+      temperature: 0.7 // Add some creativity, but not too much
+    });
+
+    // Get the raw response content
+    const responseContent = response.choices[0].message.content;
+    console.log("Raw API response:", responseContent);
+    
+    // Handle both JSON and plain text formats
+    const parsedResponse = extractJsonFromResponse(responseContent);
+    
+    // Before returning, ensure response has a 'message' property
+    if (!parsedResponse.message && typeof responseContent === 'string') {
+      parsedResponse.message = responseContent;
+    }
+    
+    return parsedResponse;
+  } catch (error) {
+    console.error("Error in meal recommendation chat:", error);
+    // Return a graceful error message instead of throwing
+    return {
+      message: `I'm sorry, I encountered an error: ${error.message}. Could you try asking in a different way?`,
+      error: true
+    };
+  }
+}

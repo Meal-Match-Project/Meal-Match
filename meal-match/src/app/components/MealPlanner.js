@@ -4,10 +4,12 @@ import { useState, useEffect, useCallback } from 'react';
 import { DndContext, DragOverlay } from '@dnd-kit/core';
 import ComponentsSidebar from './ComponentsSidebar';
 import MealGrid from './MealGrid';
-import { PlusCircle } from 'lucide-react';
 import SaveMealModal from '@/app/components/modals/SaveMealModal';
 import { addComponent } from '../actions/componentActions';
 import TutorialModal from './TutorialModal';
+import MealRecommendations from '@/app/components/MealRecommendations';
+import { ChevronLeft, MessageSquare } from 'lucide-react';
+
 
 export default function MealPlanner({ components = [], meals = [], favorites = [], userId, dayInfo = [] }) {
   // Initialize state from props
@@ -25,12 +27,68 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
   const [showTutorial, setShowTutorial] = useState(false);
   const [quickComponentName, setQuickComponentName] = useState('');
   const [compSidebarCollapsed, setCompSidebarCollapsed] = useState(false);
+  const [showRecommendations, setShowRecommendations] = useState(false);
+
 
   // State for saving data
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState(new Date());
   const [saveNeeded, setSaveNeeded] = useState(false);
   
+  // Add recommended meal to the grid
+  const handleAddRecommendedMeal = (meal) => {
+    // Find an empty meal slot, preferably for the current day
+    const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+    
+    // Try to find an empty lunch or dinner slot for today
+    let targetMeal = mealsData.find(meal => 
+      meal.day_of_week === today && 
+      (meal.meal_type === 'Lunch' || meal.meal_type === 'Dinner') && 
+      meal.components.length === 0
+    );
+    
+    // If no empty slot found for today, use any empty slot
+    if (!targetMeal) {
+      targetMeal = mealsData.find(meal => meal.components.length === 0);
+    }
+    
+    if (!targetMeal) {
+      alert("No empty meal slots available. Please clear a meal first.");
+      return;
+    }
+    
+    // Update the meal with recommendation data
+    setMealsData((prev) => {
+      return prev.map((m) => 
+        m._id === targetMeal._id ? {
+          ...m,
+          name: meal.mealName,
+          components: [...meal.components],
+          toppings: [...(meal.additionalIngredients || [])],
+          notes: meal.preparationInstructions || ''
+        } : m
+      );
+    });
+    
+    // Update component servings
+    meal.components.forEach((compName) => {
+      const compIndex = componentsData.findIndex(comp => comp.name === compName);
+      
+      if (compIndex !== -1 && componentsData[compIndex].servings > 0) {
+        setComponentsData((prev) => {
+          const updated = [...prev];
+          updated[compIndex] = {
+            ...updated[compIndex],
+            servings: updated[compIndex].servings - 1,
+          };
+          return updated;
+        });
+      }
+    });
+    
+    markSaveNeeded();
+  };
+
   // Save data function - memoized to avoid recreation on each render
   const saveData = useCallback(async () => {
     if (isSaving) return; // Prevent multiple simultaneous saves
@@ -165,41 +223,55 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
     setModalOpen(true);
   };
 
-  // Clearing a meal from the grid
-  const handleClearMeal = (mealId) => {
-    // Restore one serving to each component used in the meal
-    const restoredComponents = mealsData.find((meal) => meal._id === mealId)?.components || [];
-    restoredComponents.forEach((compName) => {
-      const compIndex = componentsData.findIndex((comp) => comp.name === compName);
-      if (compIndex !== -1) {
-        setComponentsData((prev) => {
-          const updated = [...prev];
-          updated[compIndex] = {
-            ...updated[compIndex],
-            servings: updated[compIndex].servings + 1,
-          };
-          return updated;
+  const handleComponentSave = async (componentData) => {
+    try {
+      // First save the component itself
+      const response = await fetch(`/api/components/${componentData._id || 'new'}`, {
+        method: componentData._id ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...componentData,
+          userId
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to save component');
+      }
+      
+      const savedData = await response.json();
+      const componentId = savedData.component._id;
+      
+      // Handle favorite status
+      if (componentData.favorite) {
+        // Add to favorites if it's marked as a favorite
+        await fetch('/api/favorites/component', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId,
+            componentId
+          })
         });
       }
-    });
-    setMealsData((prev) => 
-      prev.map((meal) => 
-        meal._id === mealId
-          ? {
-              ...meal,            // Keep ID and other base properties
-              name: '',
-              components: [],     // Clear components array
-              toppings: [],       // Clear toppings array  
-              notes: '',          // Reset notes to empty string
-              favorite: false     // Set favorite to false
-            }
-          : meal
-      )
-    );
-
-
-    
-    markSaveNeeded();
+      
+      // Update local state
+      setComponentsData(prev => {
+        const exists = prev.some(c => c._id === componentId);
+        if (exists) {
+          return prev.map(c => c._id === componentId ? savedData.component : c);
+        } else {
+          return [...prev, savedData.component];
+        }
+      });
+      
+      markSaveNeeded();
+      
+      return { success: true, component: savedData.component };
+    } catch (error) {
+      console.error('Error saving component:', error);
+      return { success: false, error: error.message };
+    }
   };
 
   const handleMoveComponent = (sourceMealId, sourceIndex, component, targetMealId) => {
@@ -458,41 +530,19 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
     markSaveNeeded();
   };
 
-  // Remove a single component from a meal slot
-  const handleRemoveComponent = (mealId, index, itemName, type = 'component') => {
-    // Remove from mealsData based on type
-    setMealsData((prev) => {
-      const updatedMeals = prev.map((meal) => {
-        if (meal._id === mealId) {
-          if (type === 'topping') {
-            // Remove from toppings array
-            return {
-              ...meal,
-              toppings: meal.toppings.filter(
-                (topping, toppingIndex) => toppingIndex !== index
-              ),
-            };
-          } else {
-            // Remove from components array
-            return {
-              ...meal,
-              components: meal.components.filter(
-                (comp, compIndex) => compIndex !== index
-              ),
-            };
-          }
-        }
-        return meal;
-      });
-      return updatedMeals;
-    });
-  
-    // Only restore servings if removing an actual component, not a topping
-    if (type !== 'topping') {
-      // Restore a serving to componentsData
-      const compIndex = componentsData.findIndex(
-        (comp) => comp.name === itemName
-      );
+  const handleClearMeal = async (mealId) => {
+    // Get the meal data before clearing it
+    const mealToBeCleared = mealsData.find((meal) => meal._id === mealId);
+    
+    if (!mealToBeCleared) return;
+    
+    const isFavorite = mealToBeCleared.favorite || false;
+    const { day, date } = mealToBeCleared; // Preserve day/date for the grid
+    
+    // Restore one serving to each component used in the meal
+    const restoredComponents = mealToBeCleared.components || [];
+    restoredComponents.forEach((compName) => {
+      const compIndex = componentsData.findIndex((comp) => comp.name === compName);
       if (compIndex !== -1) {
         setComponentsData((prev) => {
           const updated = [...prev];
@@ -503,10 +553,135 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
           return updated;
         });
       }
+    });
+    
+    // If the meal is favorited, save a copy without the day/date attributes
+    if (isFavorite && mealToBeCleared.name) {
+      try {
+        console.log('Preserving favorited meal:', mealToBeCleared.name);
+        
+        // Create a clean copy of the meal without grid-specific attributes
+        const favoriteMealCopy = {
+          ...mealToBeCleared,
+          day: undefined, // Remove grid-specific attributes
+          date: undefined,
+          dayOfWeek: undefined,
+          _id: undefined, // Let the server generate a new ID for this copy
+          favorite: true
+        };
+        
+        // Save the favorite meal copy to the database
+        const mealResponse = await fetch('/api/meals/new', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...favoriteMealCopy,
+            userId
+          })
+        });
+        
+        if (mealResponse.ok) {
+          const savedMeal = await mealResponse.json();
+          const favoriteMealId = savedMeal.meal._id;
+          
+          // Add to favorites collection
+          await fetch('/api/favorites', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user_id: userId,
+              meal_id: favoriteMealId,
+              type: 'meal'
+            })
+          });
+          
+          // Update the local favorites data
+          setFavoritesData(prev => {
+            // Avoid duplicates by checking if a meal with this name already exists
+            const nameExists = prev.some(m => m.name === mealToBeCleared.name);
+            if (!nameExists) {
+              return [...prev, { ...savedMeal.meal, favorite: true }];
+            }
+            return prev;
+          });
+          
+          console.log('Meal saved to favorites successfully');
+        }
+      } catch (error) {
+        console.error('Error preserving favorited meal:', error);
+      }
     }
+    
+    // Clear the meal slot but preserve the day/date information
+    setMealsData((prev) => 
+      prev.map((meal) => 
+        meal._id === mealId
+          ? {
+              ...meal,            // Keep ID 
+              day,                // Preserve day
+              date,               // Preserve date
+              name: '',           // Reset name
+              components: [],     // Clear components array
+              toppings: [],       // Clear toppings array  
+              notes: '',          // Reset notes to empty string
+              favorite: false     // Reset favorite to false
+            }
+          : meal
+      )
+    );
     
     markSaveNeeded();
   };
+
+  // Remove a single component from a meal slot
+const handleRemoveComponent = (mealId, index, itemName, type = 'component') => {
+  // Remove from mealsData based on type
+  setMealsData((prev) => {
+    const updatedMeals = prev.map((meal) => {
+      if (meal._id === mealId) {
+        if (type === 'topping') {
+          // Remove from toppings array
+          return {
+            ...meal,
+            toppings: meal.toppings.filter(
+              (topping, toppingIndex) => toppingIndex !== index
+            ),
+          };
+        } else {
+          // Remove from components array
+          return {
+            ...meal,
+            components: meal.components.filter(
+              (comp, compIndex) => compIndex !== index
+            ),
+          };
+        }
+      }
+      return meal;
+    });
+    return updatedMeals;
+  });
+
+  // Only restore servings if removing an actual component, not a topping
+  if (type !== 'topping') {
+    // Restore a serving to componentsData
+    const compIndex = componentsData.findIndex(
+      (comp) => comp.name === itemName
+    );
+    if (compIndex !== -1) {
+      setComponentsData((prev) => {
+        const updated = [...prev];
+        updated[compIndex] = {
+          ...updated[compIndex],
+          servings: updated[compIndex].servings + 1,
+        };
+        return updated;
+      });
+    }
+  }
+  
+  markSaveNeeded();
+};
 
   // Add a "mini" component (like a topping) to a meal slot
   const handleAddMiniComponent = (mealId, miniComponentName) => {
@@ -530,61 +705,83 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
 
   return (
     <>
-      {showTutorial && (
-        <TutorialModal 
-          userId={userId}
-          onClose={() => setShowTutorial(false)}
-        />
-      )}
-      
-      {/* Save Status Indicator */}
-      <div className="flex justify-end items-center mb-2 text-sm">
-        <span className="mr-2">
-          {saveNeeded ? 
-            <span className="text-orange-600">Saving changes...</span> : 
-            <span className="text-green-600">
-              All changes saved {lastSaved.toLocaleTimeString()}
-            </span>
-          }
-        </span>
+    {showTutorial && (
+      <TutorialModal 
+        userId={userId}
+        onClose={() => setShowTutorial(false)}
+      />
+    )}
+    
+    {/* Save Status Indicator */}
+    <div className="flex justify-between items-center mb-2 text-sm">
+      <div>
+        {!showRecommendations && (
+          <button 
+            onClick={() => setShowRecommendations(true)}
+            className="flex items-center text-orange-600 hover:text-orange-700 bg-white px-3 py-1 rounded-md shadow-sm"
+          >
+            <MessageSquare className="w-4 h-4 mr-1" />
+            <span>Get Meal Ideas</span>
+          </button>
+        )}
       </div>
-      
-      <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-        <div className="flex h-[calc(100vh-150px)] bg-gray-100 rounded-lg shadow-lg overflow-hidden">
-          {!compSidebarCollapsed && (
-            <ComponentsSidebar
-              components={componentsData}
-              favorites={favoritesData}
-              userId={userId}
-              onAddComponent={handleAddComponent}
-              className="w-1/6 min-w-[200px]"
-            />
-          )}
-          <MealGrid
-            meals={mealsData}
+      <span>
+        {saveNeeded ? 
+          <span className="text-orange-600">Saving changes...</span> : 
+          <span className="text-green-600">
+            All changes saved {lastSaved.toLocaleTimeString()}
+          </span>
+        }
+      </span>
+    </div>
+    
+    <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+      <div className="flex h-[calc(100vh-150px)] bg-gray-100 rounded-lg shadow-lg overflow-hidden">
+        {!compSidebarCollapsed && (
+          <ComponentsSidebar
             components={componentsData}
-            onRemoveComponent={handleRemoveComponent}
-            onAddMiniComponent={handleAddMiniComponent}
-            onMealClick={handleMealClick}
-            onClearMeal={handleClearMeal}
-            onMoveComponent={handleMoveComponent}
-            dayInfo={daysInfo}
-            className={compSidebarCollapsed ? "w-full" : "w-5/6"}
+            favorites={favoritesData}
+            userId={userId}
+            onAddComponent={handleAddComponent}
+            className="w-1/6 min-w-[200px]"
           />
-          <SaveMealModal
-            isOpen={modalOpen}
-            onClose={() => setModalOpen(false)}
-            onSave={handleSaveMeal}
-            mealId={selectedMeal}
-            mealComponents={selectedMealComponents}
-            mealToppings={selectedMealToppings}
-          />
-        </div>
-        <DragOverlay>
-          {activeItem ? <DraggableItem id={activeItem} /> : null}
-        </DragOverlay>
-      </DndContext>
-    </>
+        )}
+        <MealGrid
+          meals={mealsData}
+          components={componentsData}
+          onRemoveComponent={handleRemoveComponent}
+          onAddMiniComponent={handleAddMiniComponent}
+          onMealClick={handleMealClick}
+          onClearMeal={handleClearMeal}
+          onMoveComponent={handleMoveComponent}
+          dayInfo={daysInfo}
+          className={`${compSidebarCollapsed ? "w-full" : "w-5/6"} ${showRecommendations ? "w-3/4" : ""}`}
+        />
+        
+        {/* AI Recommendations Side Panel */}
+        <MealRecommendations 
+          userId={userId}
+          isVisible={showRecommendations}
+          onToggleVisibility={() => setShowRecommendations(false)}
+          onAddMealToPlanner={handleAddRecommendedMeal}
+        />
+        
+        <SaveMealModal
+          isOpen={modalOpen}
+          onClose={() => setModalOpen(false)}
+          onSave={handleSaveMeal}
+          mealId={selectedMeal}
+          mealComponents={selectedMealComponents}
+          mealToppings={selectedMealToppings}
+          userId={userId}
+          existingMeal={mealsData.find(m => m._id === selectedMeal)}
+        />
+      </div>
+      <DragOverlay>
+        {activeItem ? <DraggableItem id={activeItem} /> : null}
+      </DragOverlay>
+    </DndContext>
+  </>
   );
 }
 
