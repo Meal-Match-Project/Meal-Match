@@ -48,11 +48,11 @@ export default function SaveMealModal({ isOpen, onClose, onSave, mealId, mealCom
         notes,
         components: mealComponents,
         toppings: mealToppings,
-        favorite: isFavorite, // Use the state variable
+        favorite: true,
       };
 
       // Call the parent component's save handler with the favorite status
-      await onSave(mealData, isFavorite);
+      await onSave(mealData, true);
       
       // Reset form
       setTitle('');
@@ -134,24 +134,6 @@ export default function SaveMealModal({ isOpen, onClose, onSave, mealId, mealCom
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Add preparation notes, cooking time, etc."
           ></textarea>
-        </div>
-
-        {/* Add Favorite Toggle */}
-        <div className="mb-4">
-          <label className="flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              checked={isFavorite}
-              onChange={toggleFavorite}
-              className="h-5 w-5 text-orange-600"
-            />
-            <span className="ml-2 flex items-center">
-              Save as Favorite
-              <Heart 
-                className={`ml-2 h-5 w-5 ${isFavorite ? 'text-red-500 fill-red-500' : 'text-gray-400'}`}
-              />
-            </span>
-          </label>
         </div>
 
         {/* Save/Cancel Buttons */}

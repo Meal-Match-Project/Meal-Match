@@ -76,8 +76,8 @@ export default function ComponentsSidebar({ components, favorites, userId, onAdd
   };
 
   return (
-    <div className={`overflow-hidden flex flex-col bg-orange-600 p-2 ${className}`}>
-      {/* Search Bar
+    <div className={`flex flex-col bg-orange-600 p-2 h-full ${className}`}>
+      {/* Search Bar */}
       <div className="bg-orange-700 rounded-lg p-2 mb-2">
         <div className="relative">
           <input
@@ -97,62 +97,71 @@ export default function ComponentsSidebar({ components, favorites, userId, onAdd
             </button>
           )}
         </div>
-      </div> */}
+      </div>
       
-      {/* Components Accordion */}
-      <div className="overflow-y-auto flex-grow">
-        <div
-          className="flex justify-between items-center text-white font-bold text-lg cursor-pointer mb-2"
-          onClick={() => toggleSection('components')}
-        >
-          <span>Components</span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${openSections.components ? "rotate-180" : ""}`} />
-        </div>
-        <div className={`overflow-hidden transition-all duration-300 ${openSections.components ? 'max-h-[calc(50vh-80px)]' : 'max-h-0'}`}>
-          <div className="overflow-y-auto space-y-1 pr-1 custom-scrollbar">
-            {filteredComponents.length > 0 ? (
-              filteredComponents.map((component) => (
-                <DraggableComponent 
-                  key={component._id} 
-                  id={component.name}
-                  count={component.servings} 
-                  component={component}
-                />
-              ))
-            ) : (
-              <div className="text-white text-sm italic p-2">
-                {searchTerm ? "No matching components" : "No components available"}
-              </div>
-            )}
+      {/* Content Area - This is the main scrollable container */}
+      <div className="flex-grow overflow-y-auto custom-scrollbar pr-1">
+        {/* Components Accordion */}
+        <div className="mb-4">
+          <div
+            className="flex justify-between items-center text-white font-bold text-lg cursor-pointer mb-2"
+            onClick={() => toggleSection('components')}
+          >
+            <span>Components</span>
+            <ChevronDown className={`w-4 h-4 transition-transform ${openSections.components ? "rotate-180" : ""}`} />
+          </div>
+          
+          <div className={`transition-all duration-300 ${openSections.components ? 'block' : 'hidden'}`}>
+            <div className="space-y-1">
+              {filteredComponents.length > 0 ? (
+                filteredComponents.map((component) => (
+                  component.servings > 0 && (
+                    <DraggableComponent 
+                      key={component._id} 
+                      id={component.name}
+                      count={component.servings} 
+                      component={component}
+                    />
+                  )
+                ))
+              ) : (
+                <div className="text-white text-sm italic p-2">
+                  {searchTerm ? "No matching components" : "No components available"}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       
         {/* Favorite Meals Accordion */}
-        <div
-          className="flex justify-between items-center text-white font-bold text-lg cursor-pointer mt-4 mb-2"
-          onClick={() => toggleSection('meals')}
-        >
-          <span>Favorite Meals</span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${openSections.meals ? "rotate-180" : ""}`} />
-        </div>
-        <div className={`overflow-hidden transition-all duration-300 ${openSections.meals ? 'max-h-[calc(30vh-40px)]' : 'max-h-0'}`}>
-          <div className="overflow-y-auto space-y-1 pr-1 custom-scrollbar">
-            {fullyAvailableMeals.length > 0 ? (
-              fullyAvailableMeals.map((meal) => (
-                <DraggableMeal key={meal._id} meal={meal} />
-              ))
-            ) : (
-              <div className="text-white text-sm italic p-2">
-                {favorites && favorites.length > 0 
-                  ? "No favorites available with current components" 
-                  : "No favorite meals saved yet"}
-              </div>
-            )}
+        <div className="mb-4">
+          <div
+            className="flex justify-between items-center text-white font-bold text-lg cursor-pointer mb-2"
+            onClick={() => toggleSection('meals')}
+          >
+            <span>Favorite Meals</span>
+            <ChevronDown className={`w-4 h-4 transition-transform ${openSections.meals ? "rotate-180" : ""}`} />
+          </div>
+          
+          <div className={`transition-all duration-300 ${openSections.meals ? 'block' : 'hidden'}`}>
+            <div className="space-y-1">
+              {fullyAvailableMeals.length > 0 ? (
+                fullyAvailableMeals.map((meal) => (
+                  <DraggableMeal key={meal._id} meal={meal} />
+                ))
+              ) : (
+                <div className="text-white text-sm italic p-2">
+                  {favorites && favorites.length > 0 
+                    ? "No favorites available with current components" 
+                    : "No favorite meals saved yet"}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
       
-      {/* Add Component Button */}
+      {/* Add Component Button - Fixed at bottom */}
       <button 
         onClick={() => setShowAddModal(true)}
         className="flex space-x-2 justify-center w-full py-2 bg-white text-orange-600 font-bold mt-2 rounded-md hover:bg-orange-100 transition-colors"

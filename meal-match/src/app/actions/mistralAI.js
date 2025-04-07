@@ -241,3 +241,77 @@ However, if you need to respond more conversationally, that's okay too. Just mak
     };
   }
 }
+
+
+/**
+ * Generates a full weekly meal template with component recommendations
+ * @param {string} userId - The ID of the user
+ * @param {object} options - Additional options like dietary preferences
+ * @returns {Promise<Object>} A complete weekly meal plan template
+ */
+export async function generateWeeklyTemplate(userId, options = {}) {
+  try {
+    // Get the user's component data and dietary info
+    const userData = await getUserComponentData(userId);
+    
+    // Create a simplified prompt for the AI to generate just components and example meals
+    const prompt = `
+      You are a meal planning expert. Create a list of versatile, reusable components that a user should prepare for their weekly meal plan.
+      
+      GUIDELINES:
+      1. Focus on 6-10 practical components the user should prepare at the beginning of the week.
+      2. These components should be versatile and reusable in different meal combinations.
+      3. Include 5-8 example meal ideas using these components, but DO NOT create a full weekly schedule.
+      4. Components should have clear descriptions, prep times, and storage life.
+      
+      USER INFORMATION:
+      Current Components: ${userData.components.map(c => c.name).join(', ') || 'None available'}
+      User Dietary Preferences: ${userData.userDietaryInfo.preferences.join(', ') || 'None specified'}
+      User Allergies: ${userData.userDietaryInfo.allergies.join(', ') || 'None specified'}
+      Additional Preferences: ${options.additionalPreferences || 'None specified'}
+      
+      Return your response as a JSON object with this structure:
+      {
+        "name": "Name of the component collection",
+        "description": "Brief description of the component-based approach",
+        "components_to_prepare": [
+          {
+            "name": "Component name",
+            "description": "Brief description",
+            "prep_time": 30,
+            "storage_life": 5,
+            "base_ingredients": ["ingredient 1", "ingredient 2"]
+          }
+        ],
+        "example_meals": [
+          {
+            "name": "Example meal name",
+            "components": ["Component 1", "Component 2"],
+            "description": "Brief description of how to combine the components"
+          }
+        ]
+      }
+      
+      Ensure the components are practical, easy to prepare, and that the example meal ideas make sense.
+      It's extremely important you return valid JSON. Do not include any Markdown formatting, just return the raw JSON.
+    `;
+    
+    // Get template from Mistral
+    const response = await mistral.chat.complete({
+      model: "mistral-large-latest",
+      messages: [{ role: 'user', content: prompt }],
+      response_format: { type: 'json_object' },
+      temperature: 0.7
+    });
+
+    // Extract and parse the JSON, handling cases where the API returns Markdown
+    const responseContent = response.choices[0].message.content;
+    console.log("Raw API response for weekly template:", responseContent);
+    
+    const template = extractJsonFromResponse(responseContent);
+    return template;
+  } catch (error) {
+    console.error("Error generating weekly template:", error);
+    throw new Error(`Failed to generate weekly template: ${error.message}`);
+  }
+}

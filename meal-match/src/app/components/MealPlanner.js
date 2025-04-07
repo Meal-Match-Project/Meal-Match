@@ -7,9 +7,8 @@ import MealGrid from './MealGrid';
 import SaveMealModal from '@/app/components/modals/SaveMealModal';
 import { addComponent } from '../actions/componentActions';
 import TutorialModal from './TutorialModal';
-import MealRecommendations from '@/app/components/MealRecommendations';
-import { ChevronLeft, MessageSquare } from 'lucide-react';
-
+import AIAssistantModal from './modals/AIAssistantModal';
+import { ChevronLeft, MessageSquare, Trash2 } from 'lucide-react';
 
 export default function MealPlanner({ components = [], meals = [], favorites = [], userId, dayInfo = [] }) {
   // Initialize state from props
@@ -27,7 +26,7 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
   const [showTutorial, setShowTutorial] = useState(false);
   const [quickComponentName, setQuickComponentName] = useState('');
   const [compSidebarCollapsed, setCompSidebarCollapsed] = useState(false);
-  const [showRecommendations, setShowRecommendations] = useState(false);
+  const [isAIModalOpen, setIsAIModalOpen] = useState(false);
 
 
   // State for saving data
@@ -37,19 +36,28 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
   
   // Add recommended meal to the grid
   const handleAddRecommendedMeal = (meal) => {
-    // Find an empty meal slot, preferably for the current day
-    const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+    // Use the specified day and meal type if provided, otherwise find an empty slot
+    const targetDay = meal.dayOfWeek || new Date().toLocaleDateString('en-US', { weekday: 'long' });
+    const targetMealType = meal.mealType || 'Dinner';
     
-    // Try to find an empty lunch or dinner slot for today
-    let targetMeal = mealsData.find(meal => 
-      meal.day_of_week === today && 
-      (meal.meal_type === 'Lunch' || meal.meal_type === 'Dinner') && 
-      meal.components.length === 0
+    // Try to find the specified meal slot first
+    let targetMeal = mealsData.find(mealItem => 
+      mealItem.day_of_week === targetDay && 
+      mealItem.meal_type === targetMealType
     );
     
-    // If no empty slot found for today, use any empty slot
-    if (!targetMeal) {
-      targetMeal = mealsData.find(meal => meal.components.length === 0);
+    // If no specified slot found or it's already filled, find any empty slot
+    if (!targetMeal || targetMeal.components.length > 0) {
+      // Look for an empty slot on the target day
+      targetMeal = mealsData.find(mealItem => 
+        mealItem.day_of_week === targetDay && 
+        mealItem.components.length === 0
+      );
+      
+      // If still no empty slot, find any empty slot
+      if (!targetMeal) {
+        targetMeal = mealsData.find(mealItem => mealItem.components.length === 0);
+      }
     }
     
     if (!targetMeal) {
@@ -88,6 +96,102 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
     
     markSaveNeeded();
   };
+
+  const handleClearAllMeals = () => {
+    // Ask for confirmation
+    if (!confirm('Are you sure you want to clear all meals for the week? This will reset all meal slots and restore component servings.')) {
+      return;
+    }
+    
+    // Track components to restore
+    const componentsToRestore = {};
+    
+    // First, collect all components used across all meals and build a count map
+    mealsData.forEach(meal => {
+      if (meal.components && meal.components.length > 0) {
+        meal.components.forEach(component => {
+          componentsToRestore[component] = (componentsToRestore[component] || 0) + 1;
+        });
+      }
+    });
+    
+    // Update all meals - clear them but keep day/date info
+    setMealsData(prev => 
+      prev.map(meal => ({
+        ...meal,            // Keep meal ID and base data
+        name: '',           // Reset name
+        components: [],     // Clear components array
+        toppings: [],       // Clear toppings array
+        notes: '',          // Reset notes
+        favorite: false     // Reset favorite status
+      }))
+    );
+    
+    // Restore component servings
+    setComponentsData(prev => {
+      const updated = [...prev];
+      Object.entries(componentsToRestore).forEach(([componentName, count]) => {
+        const componentIndex = updated.findIndex(comp => comp.name === componentName);
+        if (componentIndex !== -1) {
+          updated[componentIndex] = {
+            ...updated[componentIndex],
+            servings: updated[componentIndex].servings + count
+          };
+        }
+      });
+      return updated;
+    });
+    
+    markSaveNeeded();
+  };
+
+  const handleApplyTemplate = (template) => {
+    if (!template || !template.components_to_prepare) {
+      console.error("Invalid template format");
+      return;
+    }
+  
+    // First, add the template components to the user's components
+    const componentsToAdd = [];
+    template.components_to_prepare.forEach(component => {
+      const newComponent = {
+        name: component.name,
+        favorite: false,
+        servings: 3, // Default value
+        prep_time: component.prep_time || 30,
+        ingredients: component.base_ingredients || [],
+        notes: component.description || '',
+        userId
+      };
+      
+      // Only add if component doesn't already exist
+      if (!componentsData.some(c => c.name === component.name)) {
+        componentsToAdd.push(newComponent);
+      }
+    });
+  
+    // IMPORTANT: Only add components to database, let the server action update state
+    // Don't do this: setComponentsData(prev => [...prev, ...componentsToAdd]);
+    
+    // Add components to database and update state accordingly
+    if (componentsToAdd.length > 0) {
+      Promise.all(componentsToAdd.map(comp => handleAddComponent(comp)))
+        .then(() => {
+          console.log("Components added successfully");
+          // Don't need to update state here because handleAddComponent does it
+        })
+        .catch(err => console.error("Error adding template components:", err));
+    }
+    
+    // If there are example meals in the template, display them but don't add to grid
+    if (template.example_meals && template.example_meals.length > 0) {
+      // You could show these in a toast notification or another UI element
+      console.log("Example meals from template:", template.example_meals);
+    }
+    
+    markSaveNeeded();
+  };
+
 
   // Save data function - memoized to avoid recreation on each render
   const saveData = useCallback(async () => {
@@ -714,16 +818,22 @@ const handleRemoveComponent = (mealId, index, itemName, type = 'component') => {
     
     {/* Save Status Indicator */}
     <div className="flex justify-between items-center mb-2 text-sm">
-      <div>
-        {!showRecommendations && (
-          <button 
-            onClick={() => setShowRecommendations(true)}
-            className="flex items-center text-orange-600 hover:text-orange-700 bg-white px-3 py-1 rounded-md shadow-sm"
-          >
-            <MessageSquare className="w-4 h-4 mr-1" />
-            <span>Get Meal Ideas</span>
-          </button>
-        )}
+      <div className="flex gap-2">
+        <button 
+          onClick={() => setIsAIModalOpen(true)}
+          className="flex items-center text-orange-600 hover:text-orange-700 bg-white px-3 py-1 rounded-md shadow-sm"
+        >
+          <MessageSquare className="w-4 h-4 mr-1" />
+          <span>AI Meal Assistant</span>
+        </button>
+        
+        <button 
+          onClick={handleClearAllMeals}
+          className="flex items-center text-red-600 hover:text-red-700 bg-white px-3 py-1 rounded-md shadow-sm"
+        >
+          <Trash2 className="w-4 h-4 mr-1" />
+          <span>Clear Week</span>
+        </button>
       </div>
       <span>
         {saveNeeded ? 
@@ -755,15 +865,16 @@ const handleRemoveComponent = (mealId, index, itemName, type = 'component') => {
           onClearMeal={handleClearMeal}
           onMoveComponent={handleMoveComponent}
           dayInfo={daysInfo}
-          className={`${compSidebarCollapsed ? "w-full" : "w-5/6"} ${showRecommendations ? "w-3/4" : ""}`}
+          className={`${compSidebarCollapsed ? "w-full" : "w-5/6"}`}
         />
         
-        {/* AI Recommendations Side Panel */}
-        <MealRecommendations 
+        {/* AI Assistant Modal */}
+        <AIAssistantModal
           userId={userId}
-          isVisible={showRecommendations}
-          onToggleVisibility={() => setShowRecommendations(false)}
+          isOpen={isAIModalOpen}
+          onClose={() => setIsAIModalOpen(false)}
           onAddMealToPlanner={handleAddRecommendedMeal}
+          onApplyTemplate={handleApplyTemplate}
         />
         
         <SaveMealModal
