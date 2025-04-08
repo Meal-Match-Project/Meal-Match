@@ -1,4 +1,5 @@
 import { Poppins } from "next/font/google";
+import AuthProvider from "@/providers/AuthProvider";
 import "@/../styles/globals.css";
 
 const poppins = Poppins({
@@ -18,7 +19,7 @@ export default function RootLayout({ children }) {
       <body
         className={poppins.className}
       >
-        {children}
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );

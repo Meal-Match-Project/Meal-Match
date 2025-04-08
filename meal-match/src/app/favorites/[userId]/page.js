@@ -1,5 +1,5 @@
-import LoggedInNav from "@/app/components/LoggedInNav";
-import FavoritesPage from "@/app/components/FavoritesPage";
+import LoggedInNav from "@/components/LoggedInNav";
+import FavoritesPage from "@/components/FavoritesPage";
 import connect from "@/lib/mongodb";
 import Favorite from "@/models/Favorites";
 import Meal from "@/models/Meals";

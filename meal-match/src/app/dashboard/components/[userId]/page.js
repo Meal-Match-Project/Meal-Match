@@ -1,7 +1,7 @@
-import LoggedInNav from "../../../components/LoggedInNav";
-import ComponentsPage from "@/app/components/ComponentsPage";
+import LoggedInNav from "@/components/LoggedInNav";
+import ComponentsPage from "@/components/ComponentsPage"; // Updated import path
 import connect from "@/lib/mongodb";
-import Component from "@/models/Components";
+import { getUserComponentData } from "@/services/apiService"; // Using apiService instead of direct model access
 
 // Helper function to convert ObjectIds to strings and ensure all data is serializable
 function convertIds(docs) {
@@ -19,21 +19,26 @@ function convertIds(docs) {
 }
 
 export async function getComponents(userId) {
-    await connect();
-    const components = await Component.find({ userId }).lean();
-    return convertIds(components);
+    try {
+        // Using apiService to get user components
+        const componentsData = await getUserComponentData(userId);
+        return convertIds(componentsData.components || []);
+    } catch (error) {
+        console.error("Error fetching components:", error);
+        return [];
+    }
 }
 
-export default async function WeeklyGrid({ params }) {
+export default async function ComponentsPageWrapper({ params }) {
     const { userId } = await params;
     const components = await getComponents(userId);
-    return(
+    
+    return (
         <>
             <LoggedInNav />
             <main className="relative">
                 <ComponentsPage userId={userId} components={components} />
             </main>
-            
         </>
     );
 }

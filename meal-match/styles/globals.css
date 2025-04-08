@@ -20,3 +20,37 @@ body {
   background: var(--background);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.sidebar-enter {
+  width: 0;
+  opacity: 0;
+}
+.sidebar-enter-active {
+  width: 16.66%;
+  min-width: 250px;
+  opacity: 1;
+  transition: width 300ms, opacity 300ms;
+}
+.sidebar-exit {
+  width: 16.66%;
+  min-width: 250px;
+  opacity: 1;
+}
+.sidebar-exit-active {
+  width: 0;
+  opacity: 0;
+  transition: width 300ms, opacity 300ms;
+}
+/* Add these classes for grid transition */
+.sidebar-enter-active + .meal-grid-container,
+.sidebar-exit-active + .meal-grid-container {
+  transition: width 300ms ease;
+}
+
+.meal-grid-container {
+  transition: width 300ms ease;
+}
+
+.meal-cell-expanded {
+  transition: all 200ms ease-in-out;
+}

@@ -1,12 +1,13 @@
 import { Suspense } from 'react';
-import LoggedInNav from '@/app/components/LoggedInNav';
-import TemplatesPage from '@/app/components/TemplatesPage';
+import LoggedInNav from '@/components/LoggedInNav';
+import TemplatesPage from '@/components/TemplatesPage';
 import connect from '@/lib/mongodb';
 import Template from '@/models/Templates';
 import User from '@/models/Users';
 
 export default async function Templates({ params }) {
-  const userId = await params.userId;
+  const urlParams = await params;
+  const userId = urlParams.userId;
   
   await connect();
   
@@ -26,8 +27,6 @@ export default async function Templates({ params }) {
         <TemplatesPage 
           userId={userId} 
           templates={serializedTemplates} 
-          userPreferences={user?.dietary_preferences || ''} 
-          userAllergies={user?.allergies || ''}
         />
       </Suspense>
     </>
