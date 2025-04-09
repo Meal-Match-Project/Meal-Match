@@ -21,32 +21,38 @@ function MealPlannerLoading() {
 }
 
 function getToday() {
-  const today = new Date();
-  // Reset time to midnight (start of the day)
-  today.setHours(0, 0, 0, 0);
-  return today;
-}
-
-// Helper function to get day names for the next 7 days starting from today
-function getNextSevenDayNames() {
-  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  const today = new Date();
-  
-  // Array to store the day names for the next 7 days
-  const nextSevenDays = [];
-  
-  for (let i = 0; i < 7; i++) {
-    const day = new Date();
-    day.setDate(today.getDate() + i);
-    nextSevenDays.push({
-      date: new Date(day),
-      name: dayNames[day.getDay()],
-      display: i === 0 ? 'Today' : dayNames[day.getDay()]
-    });
+    // Create date object using Eastern Time (ET)
+    const options = { timeZone: 'America/New_York' };
+    const etDate = new Date(new Date().toLocaleString('en-US', options));
+    
+    // Reset time to midnight (start of the day)
+    etDate.setHours(0, 0, 0, 0);
+    return etDate;
   }
   
-  return nextSevenDays;
-}
+  // Helper function to get day names for the next 7 days starting from today
+  function getNextSevenDayNames() {
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    
+    // Get today's date in Eastern Time
+    const options = { timeZone: 'America/New_York' };
+    const today = new Date(new Date().toLocaleString('en-US', options));
+    
+    // Array to store the day names for the next 7 days
+    const nextSevenDays = [];
+    
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(today);
+      day.setDate(today.getDate() + i);
+      nextSevenDays.push({
+        date: new Date(day),
+        name: dayNames[day.getDay()],
+        display: i === 0 ? 'Today' : dayNames[day.getDay()]
+      });
+    }
+    
+    return nextSevenDays;
+  }
 
 // Helper function to convert ObjectIds to strings and ensure all data is serializable
 function convertIds(docs) {

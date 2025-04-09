@@ -18,18 +18,31 @@ export default function MealGrid({
   }) {
     // Use dynamic days from dayInfo, or fallback to default days if not provided
     const days = dayInfo.length === 7 
-      ? dayInfo.map(day => ({ date: new Date(day.date).getDate(), display: day.display, name: day.name }))
-      : [
-          { display: 'Today', name: new Date().toLocaleDateString('en-US', { weekday: 'long' }) },
-          ...Array(6).fill().map((_, i) => {
-            const day = new Date();
-            day.setDate(day.getDate() + i + 1);
-            return { 
-              display: day.toLocaleDateString('en-US', { weekday: 'long' }), 
-              name: day.toLocaleDateString('en-US', { weekday: 'long' }) 
+        ? dayInfo.map(day => {
+            const dateObj = new Date(day.date);
+            return {
+                date: dateObj.getDate(), // Keep this for backward compatibility
+                display: day.display,
+                name: day.name,
+                formattedDate: dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) // "Apr 8" format
             };
-          })
-        ];
+            })
+        : [
+            { 
+                display: 'Today', 
+                name: new Date().toLocaleDateString('en-US', { weekday: 'long' }),
+                formattedDate: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+            },
+            ...Array(6).fill().map((_, i) => {
+                const day = new Date();
+                day.setDate(day.getDate() + i + 1);
+                return { 
+                display: day.toLocaleDateString('en-US', { weekday: 'long' }), 
+                name: day.toLocaleDateString('en-US', { weekday: 'long' }),
+                formattedDate: day.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                };
+            })
+            ];
     const mealTypes = ['Breakfast', 'Lunch', 'Dinner'];
   
     // Create a list of valid component names
@@ -44,7 +57,7 @@ export default function MealGrid({
                 {day.display}
               </h2>
               <h1 className="text-sm text-center">
-                {day.date}
+                {day.formattedDate}
               </h1>
               <div className="space-y-4 mt-2">
                 {mealTypes.map((mealType) => {
@@ -198,10 +211,15 @@ function DroppableMeal({ id, meal, onRemoveComponent, onAddMiniComponent, onMeal
             ))}
 
             {/* If meal has a name (not auto-generated), show it */}
-            {meal.name && meal.name !== `${meal.day_of_week}-${meal.meal_type}` && (
-                <div className="mt-2 text-sm font-medium text-gray-700">
-                    {meal.name}
-                </div>
+            {meal.name && (
+                // Only show if it's a custom name (not auto-generated)
+                meal.name !== `${meal.day_of_week} ${meal.meal_type}` && 
+                meal.name !== `${meal.day_of_week}-${meal.meal_type}` && 
+                meal.name !== `${meal.day_of_week} ${meal.meal_type}`.trim() && (
+                    <div className="mt-2 text-sm font-medium text-gray-700">
+                        {meal.name}
+                    </div>
+                )
             )}
         </div>
     );
