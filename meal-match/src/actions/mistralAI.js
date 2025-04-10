@@ -278,7 +278,7 @@ export async function generateWeeklyTemplate(userId, options = {}) {
         "components_to_prepare": [
           {
             "name": "Component name",
-            "description": "Brief description",
+            "notes": "Brief description",
             "prep_time": 30,
             "storage_life": 5,
             "base_ingredients": ["ingredient 1", "ingredient 2"]
@@ -293,7 +293,7 @@ export async function generateWeeklyTemplate(userId, options = {}) {
         ]
       }
       
-      Ensure the components are practical, easy to prepare, and that the example meal ideas make sense.
+      Ensure the components are practical, easy to prepare, and that the example meal ideas make sense. Draw from the examples below and from your own knowledge of meal prep and planning.
       Examples of components include:
 
       -------
@@ -409,7 +409,7 @@ export async function generateWeeklyTemplate(userId, options = {}) {
     
     // Get template from Mistral
     const response = await mistral.chat.complete({
-      model: "mistral-large-latest",
+      model: "mistral-small-latest",
       messages: [{ role: 'user', content: prompt }],
       response_format: { type: 'json_object' },
       temperature: 0.7
