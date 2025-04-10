@@ -96,18 +96,20 @@ export default function useMealComponents({ initialComponents, initialMeals, onS
   }, [mealsData, componentsData, onSaveNeeded]);
   
   // Add a mini component (quick add)
-  const handleAddMiniComponent = useCallback(async (name, userId) => {
-    const quickComponent = {
-      name: name.trim(),
-      servings: 1,
-      prep_time: 5,
-      ingredients: [],
-      notes: '',
-      userId
-    };
-    
-    return handleAddComponent(quickComponent);
-  }, [handleAddComponent]);
+  const handleAddMiniComponent = useCallback((mealId, toppingName) => {
+    setMealsData(prev =>
+      prev.map(meal =>
+        meal._id === mealId
+          ? {
+              ...meal,
+              toppings: [...(meal.toppings || []), toppingName.trim()]
+            }
+          : meal
+      )
+    );
+  
+    onSaveNeeded();
+  }, [onSaveNeeded]);
   
   // Move a component from one meal to another
   const handleMoveComponent = useCallback((fromMealId, toMealId, componentName) => {
