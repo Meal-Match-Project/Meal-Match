@@ -100,7 +100,7 @@ export default function Profile({ userId }) {
           profilePicture,
           username: userData.username,
           email: userData.email,
-          password: '••••••••',  // Mask the actual password
+          password: null,  // Mask the actual password
           dietary_preferences: dietaryPrefs,
           allergies: allergyList
         });
@@ -195,7 +195,7 @@ export default function Profile({ userId }) {
       };
   
       // Only include password if it was modified
-      if (passwordModified && profile.password !== '••••••••') {
+      if (passwordModified && profile.password !== null) {
         userData.password = profile.password;
       }
       
@@ -353,7 +353,7 @@ export default function Profile({ userId }) {
                     name="username"
                     value={profile.username}
                     onChange={handleChange}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-orange-500 focus:border-orange-500"
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-orange-500 focus:border-orange-500 text-black"
                     required
                   />
                 </div>
@@ -365,7 +365,7 @@ export default function Profile({ userId }) {
                     name="email"
                     value={profile.email}
                     onChange={handleChange}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-orange-500 focus:border-orange-500"
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-orange-500 focus:border-orange-500 text-black"
                     required
                   />
                 </div>
@@ -378,11 +378,11 @@ export default function Profile({ userId }) {
                       name="password"
                       value={profile.password}
                       onChange={handleChange}
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-orange-500 focus:border-orange-500"
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-orange-500 focus:border-orange-500 text-black"
                     />
                     <button 
                       type="button" 
-                      className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-orange-500"
                       onClick={() => setPasswordVisible(!passwordVisible)}
                     >
                       {passwordVisible ? 'Hide' : 'Show'}
