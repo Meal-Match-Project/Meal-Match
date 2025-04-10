@@ -24,8 +24,11 @@ export const authOptions = {
           await connect();
           console.log("Connected to MongoDB");
           
-          const user = await User.findOne({ 
-            email: { $regex: new RegExp(`^${credentials.email}$`, 'i') } 
+          const user = await User.findOne({
+            $or: [
+              { email: { $regex: new RegExp(`^${credentials.email}$`, 'i') } },
+              { username: { $regex: new RegExp(`^${credentials.email}$`, 'i') } }
+            ]
           });
           
           console.log("User ID:", user?._id?.toString());
