@@ -205,7 +205,7 @@ export default function ComponentsSidebar({
       
         {/* Favorite Meals Accordion */}
         <Accordion
-          title="Favorite Meals"
+          title="Saved Meals"
           isOpen={openSections.meals}
           onToggle={() => toggleSection('meals')}
         >

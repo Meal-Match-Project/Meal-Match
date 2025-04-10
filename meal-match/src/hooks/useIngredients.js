@@ -25,7 +25,7 @@ export default function useIngredients(userId, initialIngredients = []) {
         }
       } else {
         // Updating existing ingredient
-        await updateIngredient(updatedIngredient);
+        await updateIngredient(updatedIngredient._id, updatedIngredient);
         setIngredientsData(ingredientsData.map(ing => 
           ing._id === updatedIngredient._id ? updatedIngredient : ing
         ));
