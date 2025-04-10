@@ -401,7 +401,7 @@ export default function AIAssistantModal({ userId, isOpen, onClose, onAddMealToP
                             {weeklyTemplate.components_to_prepare.map((component, idx) => (
                                 <div key={idx} className="bg-white p-2 rounded border">
                                 <div className="font-medium">{component.name}</div>
-                                <div className="text-sm">{component.description}</div>
+                                <div className="text-sm">{component.notes}</div>
                                 <div className="text-sm text-gray-600 mt-1">
                                     {component.prep_time}min prep • {component.storage_life} days storage
                                 </div>

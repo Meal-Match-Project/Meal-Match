@@ -266,7 +266,6 @@ export async function generateWeeklyTemplate(userId, options = {}) {
       4. Components should have clear descriptions, prep times, and storage life.
       
       USER INFORMATION:
-      Current Components: ${userData.components.map(c => c.name).join(', ') || 'None available'}
       User Dietary Preferences: ${userData.userDietaryInfo.preferences.join(', ') || 'None specified'}
       User Allergies: ${userData.userDietaryInfo.allergies.join(', ') || 'None specified'}
       Additional Preferences: ${options.additionalPreferences || 'None specified'}

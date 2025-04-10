@@ -591,8 +591,7 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
               prep_time: component.prep_time || 15,
               storage_life: component.storage_life || 5,
               ingredients: component.ingredients || [],
-              description: component.description || `${component.name} (prepared in advance)`,
-              notes: '',
+              notes: component.notes || '',
               favorite: false,
               userId
             };
