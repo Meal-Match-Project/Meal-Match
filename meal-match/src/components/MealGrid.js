@@ -147,8 +147,7 @@ function DroppableMeal({ id, meal, onRemoveComponent, onAddMiniComponent, onMeal
                             setShowOptions(false);
                         }}
                     >
-                        Favorite
-                        <Heart className={`w-4 h-4 ${meal.favorite ? 'fill-red-500 text-red-500' : ''}`} />
+                    Save Meal
                     </button>
                     <button
                         className="w-full text-left px-4 py-2 hover:bg-gray-100 text-red-600"
@@ -157,7 +156,7 @@ function DroppableMeal({ id, meal, onRemoveComponent, onAddMiniComponent, onMeal
                             setShowOptions(false);
                         }}
                     >
-                        Clear Meal
+                    Clear Meal
                     </button>
                 </div>
             )}

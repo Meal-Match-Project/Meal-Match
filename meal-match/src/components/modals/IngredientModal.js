@@ -125,7 +125,7 @@ export default function IngredientModal({
           {/* Name - shown only in edit mode */}
           {isEditing &&
             <div>
-              <p className="text-sm font-semibold">Name</p>             
+              <p className="text-sm font-semibold">Name <span className="text-red-500 ml-1">*</span></p>             
               <input
                 ref={nameInputRef}
                 type="text"

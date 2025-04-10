@@ -36,8 +36,6 @@ const Navbar = () => {
                     {/* Desktop Navigation */}
                     <div className="hidden md:flex ml-auto space-x-12 items-center">
                         <NavLink href="/about" label="ABOUT" icon={<Info className="w-4 h-4 mr-1" />} />
-                        <NavLink href="#templates" label="TEMPLATES" icon={<BookOpen className="w-4 h-4 mr-1" />} />
-                        <NavLink href="#pricing" label="PRICING" icon={<DollarSign className="w-4 h-4 mr-1" />} />
                         
                         <div className="flex space-x-4">
                             <Link href="/login">

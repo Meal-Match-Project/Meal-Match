@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import CustomButton from "./ui/CustomButton";
 import { XCircle, CheckCircle, AlertTriangle } from 'lucide-react';
-import { signIn } from "next-auth/react"; // Update this import
+import { signIn } from "next-auth/react";
 
 const Login = () => {
   const router = useRouter();
