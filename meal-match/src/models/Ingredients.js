@@ -17,6 +17,10 @@ const IngredientSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
+    category: {
+        type: String,
+        required: false,
+    },
     status: {
         type: String,
         required: false,

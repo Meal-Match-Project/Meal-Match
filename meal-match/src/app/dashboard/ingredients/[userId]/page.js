@@ -1,5 +1,5 @@
-import LoggedInNav from "@/app/components/LoggedInNav";
-import IngredientsPage from "@/app/components/IngredientsPage";
+import LoggedInNav from "@/components/LoggedInNav";
+import IngredientsPage from "@/components/IngredientsPage";
 import connect from "@/lib/mongodb";
 import Ingredient from "@/models/Ingredients";
 

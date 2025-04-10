@@ -1,5 +1,5 @@
-import LoggedInNav from '@/app/components/LoggedInNav';
-import Profile from '@/app/components/Profile';
+import LoggedInNav from '@/components/LoggedInNav';
+import Profile from '@/components/Profile';
 
 export default async function ProfilePage({ params }) {
     const { userId } = await params;
