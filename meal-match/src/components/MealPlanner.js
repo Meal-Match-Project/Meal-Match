@@ -239,17 +239,19 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
       // 2. Handle favorite status in the favorites collection
       try {
         if (isFavorite) {
-          await addFavorite({
+          const favoriteData = {
             user_id: userId,
-            meal_id: mealId,
-            type: 'meal'
-          });
+            meal: {
+              name: mealData.name,
+              meal_type: mealData.meal_type,
+              components: mealData.components,
+              toppings: mealData.toppings || [],
+              notes: mealData.notes || '',
+              day_of_week: mealData.day_of_week
+            },
+          };
           
-          // Update favorites data if needed
-          const existingFavorite = favoritesData.find(f => f._id === mealId);
-          if (!existingFavorite) {
-            setFavoritesData(prev => [...prev, savedMealData.meal]);
-          }
+          await addFavorite(favoriteData);
         } else {
           await removeFavorite(userId, mealId);
           // Remove from local favoritesData

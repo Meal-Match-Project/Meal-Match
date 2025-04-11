@@ -1,60 +1,49 @@
 'use client';
-
-import { useState, useEffect, useCallback } from 'react';
-import { 
-  removeFavorite, 
-  removeComponentFavorite,
-  deleteFavoriteById
-} from '@/services/apiService';
+import { useState, useCallback } from 'react';
+import { removeFavorite, removeComponentFavorite } from '@/actions/favoriteActions';
 
 export function useFavorites() {
-  // Categorize meals based on available components
-  const categorizeMeals = useCallback((favoriteMeals, weeklyComponents) => {
-    if (!favoriteMeals || !weeklyComponents) return [];
-    
-    return favoriteMeals.map(meal => {
-      const components = Array.isArray(meal.components) ? meal.components : [];
-      
-      if (components.length === 0) return { ...meal, category: 'no-match' };
-      
-      const availableComponents = weeklyComponents.map(comp => 
-        typeof comp === 'string' ? comp : comp.name
+  // Function to categorize meals based on available components
+  const categorizeMeals = useCallback((meals, availableComponents) => {
+    return meals.map(meal => {
+      const mealComponents = meal.components || [];
+      const matchingComponents = mealComponents.filter(
+        comp => availableComponents.includes(comp)
       );
       
-      const matchCount = components.filter(comp => 
-        availableComponents.includes(comp)
-      ).length;
-      
       let category = 'no-match';
-      if (matchCount === components.length) category = 'all-match';
-      else if (matchCount > 0) category = 'some-match';
+      if (matchingComponents.length === mealComponents.length && mealComponents.length > 0) {
+        category = 'all-match';
+      } else if (matchingComponents.length > 0) {
+        category = 'some-match';
+      }
       
       return { ...meal, category };
     });
   }, []);
-
-  // Remove a meal from favorites
-  const removeMealFromFavorites = async (mealId, userId) => {
+  
+  // Function to remove a meal from favorites
+  const removeMealFromFavorites = useCallback(async (userId, favoriteId) => {
     try {
-      await removeFavorite(mealId, userId);
-      return true;
+      const result = await removeFavorite(userId, favoriteId);
+      return result.success;
     } catch (error) {
-      console.error('Error removing meal from favorites:', error);
+      console.error("Error removing favorite meal:", error);
       return false;
     }
-  };
-
-  // Remove a component from favorites
-  const removeComponentFromFavorites = async (componentId, userId) => {
+  }, []);
+  
+  // Function to remove a component from favorites
+  const removeComponentFromFavorites = useCallback(async (componentId, userId) => {
     try {
-      await removeComponentFavorite(componentId, userId);
-      return true;
+      const result = await removeComponentFavorite(userId, componentId);
+      return result.success;
     } catch (error) {
-      console.error('Error removing component from favorites:', error);
+      console.error("Error removing favorite component:", error);
       return false;
     }
-  };
-
+  }, []);
+  
   return {
     categorizeMeals,
     removeMealFromFavorites,

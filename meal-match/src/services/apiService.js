@@ -43,9 +43,9 @@ import {
   import {
     addFavorite,
     removeFavorite,
+    getFavoriteMeals,
     addComponentFavorite,
     removeComponentFavorite,
-    deleteFavoriteById
   } from '@/actions/favoriteActions';
   
   // Import ingredient actions
@@ -98,7 +98,7 @@ import {
     removeFavorite,
     addComponentFavorite,
     removeComponentFavorite,
-    deleteFavoriteById,
+    getFavoriteMeals,
     
     // Ingredient actions
     addIngredient,

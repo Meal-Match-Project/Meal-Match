@@ -1,53 +1,65 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useFavorites } from '@/hooks/useFavorites';
 import FavoriteMealModal from './modals/FavoriteMealModal';
 
 export default function FavoriteMealsList({ userId, favoriteMeals, weeklyComponents }) {
-  const [meals, setMeals] = useState([]);
   const [selectedMeal, setSelectedMeal] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { categorizeMeals, removeMealFromFavorites } = useFavorites();
   
-  // Wrap the categorizeMeals function in useCallback to prevent the infinite loop
-  const memoizedCategorize = useCallback(
-    (meals, components) => categorizeMeals(meals, components),
-    [categorizeMeals]
-  );
+  // Process favorites data with useMemo to prevent unnecessary recalculations
+  const processedMeals = useMemo(() => {
+    if (!favoriteMeals) return [];
+    
+    return favoriteMeals.map(fav => ({
+      _id: fav._id,
+      ...fav.meal,
+      favoriteId: fav._id
+    }));
+  }, [favoriteMeals]);
   
-  // Categorize meals when props change
-  useEffect(() => {
-    if (favoriteMeals && weeklyComponents) {
-      setMeals(memoizedCategorize(favoriteMeals, weeklyComponents));
-    }
-  }, [favoriteMeals, weeklyComponents, memoizedCategorize]);
+  // Use useMemo to categorize meals instead of useState + useEffect
+  const meals = useMemo(() => {
+    if (!processedMeals.length || !weeklyComponents) return [];
+    return categorizeMeals(processedMeals, weeklyComponents);
+  }, [processedMeals, weeklyComponents, categorizeMeals]);
   
-  const handleMealClick = (meal) => {
+  // Also memoize the filtered meals to avoid recalculations
+  const allMatchMeals = useMemo(() => 
+    meals.filter(meal => meal.category === 'all-match'),
+  [meals]);
+  
+  const someMatchMeals = useMemo(() => 
+    meals.filter(meal => meal.category === 'some-match'),
+  [meals]);
+  
+  const noMatchMeals = useMemo(() => 
+    meals.filter(meal => meal.category === 'no-match'),
+  [meals]);
+  
+  const handleMealClick = useCallback((meal) => {
     setSelectedMeal(meal);
     setIsModalOpen(true);
-  };
+  }, []);
   
-  const handleCloseMeal = () => {
+  const handleCloseMeal = useCallback(() => {
     setIsModalOpen(false);
     setSelectedMeal(null);
-  };
+  }, []);
   
-  const handleRemoveFavorite = async (mealId) => {
-    const success = await removeMealFromFavorites(mealId, userId);
+  const handleRemoveFavorite = useCallback(async (favoriteId) => {
+    const success = await removeMealFromFavorites(userId, favoriteId);
     if (success) {
-      setMeals(meals.filter(meal => meal._id !== mealId));
+      // We don't need to manually update state here - the component will re-render
+      // when the parent component refetches the favorites data
       setIsModalOpen(false);
     }
-  };
-  
-  // Group meals by category
-  const allMatchMeals = meals.filter(meal => meal.category === 'all-match');
-  const someMatchMeals = meals.filter(meal => meal.category === 'some-match');
-  const noMatchMeals = meals.filter(meal => meal.category === 'no-match');
+  }, [userId, removeMealFromFavorites]);
   
   // Helper function to render meal lists with consistent styling
-  const renderMealList = (mealList, title) => {
+  const renderMealList = useCallback((mealList, title) => {
     if (mealList.length === 0) return null;
     
     return (
@@ -74,7 +86,7 @@ export default function FavoriteMealsList({ userId, favoriteMeals, weeklyCompone
         </div>
       </div>
     );
-  };
+  }, [handleMealClick]);
   
   return (
     <div>
@@ -94,7 +106,7 @@ export default function FavoriteMealsList({ userId, favoriteMeals, weeklyCompone
               meal={selectedMeal}
               weeklyComponents={weeklyComponents}
               onClose={handleCloseMeal}
-              onRemoveFavorite={handleRemoveFavorite}
+              onRemoveFavorite={() => handleRemoveFavorite(selectedMeal.favoriteId || selectedMeal._id)}
             />
           )}
         </>

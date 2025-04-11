@@ -1,7 +1,7 @@
 "use server";
 
 import { Mistral } from "@mistralai/mistralai";
-import { getUserComponentData } from "./getUserComponentData";
+import { getUserComponentData } from "./componentActions";
 
 const apiKey = process.env.MISTRAL_API_KEY;
 const mistral = new Mistral({ apiKey });
@@ -448,7 +448,7 @@ export async function getGeneralFoodAdvice(userId, chatHistory = []) {
     
     // Get response from Mistral
     const response = await mistral.chat.complete({
-      model: "mistral-large-latest",
+      model: "mistral-small-latest",
       messages: messages,
       temperature: 0.7
     });

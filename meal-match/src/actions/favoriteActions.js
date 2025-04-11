@@ -10,31 +10,30 @@ export async function addFavorite(favoriteData) {
     await connect();
     
     // Validate required fields
-    if (!favoriteData.user_id || !favoriteData.meal_id) {
-      return { success: false, error: "Missing required fields: user_id and meal_id" };
+    if (!favoriteData.user_id || !favoriteData.meal) {
+      return { success: false, error: "Missing required fields: user_id and meal data" };
     }
     
-    // First check if this favorite already exists
+    // Check if a similar meal is already favorited
     const existingFavorite = await Favorite.findOne({
       user_id: favoriteData.user_id,
-      meal_id: favoriteData.meal_id
+      'meal.name': favoriteData.meal.name
     });
     
     // If it already exists, return success without duplicating
     if (existingFavorite) {
       return { 
         success: true, 
-        message: "Favorite already exists", 
+        message: "Similar favorite already exists", 
         favorite: JSON.parse(JSON.stringify(existingFavorite)) 
       };
     }
     
-    // Otherwise create a new favorite
+    // Create a new favorite with complete meal data
     const favorite = new Favorite({
       user_id: favoriteData.user_id,
-      meal_id: favoriteData.meal_id,
-      type: favoriteData.type || 'meal',
-      created_at: new Date()
+      meal: favoriteData.meal,
+      type: 'meal',
     });
     
     await favorite.save();
@@ -50,19 +49,19 @@ export async function addFavorite(favoriteData) {
   }
 }
 
-export async function removeFavorite(userId, mealId) {
+export async function removeFavorite(userId, favoriteId) {
   try {
     await connect();
     
     // Validate required fields
-    if (!userId || !mealId) {
-      return { success: false, error: "Missing required fields: userId and mealId" };
+    if (!userId || !favoriteId) {
+      return { success: false, error: "Missing required fields: userId and favoriteId" };
     }
     
     // Delete the favorite
     const result = await Favorite.findOneAndDelete({
       user_id: userId,
-      meal_id: mealId
+      _id: favoriteId
     });
     
     if (!result) {
@@ -85,29 +84,7 @@ export async function addComponentFavorite(userId, componentId) {
       return { success: false, error: "Missing required fields: userId and componentId" };
     }
     
-    // First check if this favorite already exists
-    const existingFavorite = await Favorite.findOne({
-      user_id: userId,
-      component_id: componentId,
-      type: 'component'
-    });
-    
-    // If it already exists, return success without duplicating
-    if (existingFavorite) {
-      return { success: true, message: "Component favorite already exists" };
-    }
-    
-    // Otherwise create a new favorite
-    const favorite = new Favorite({
-      user_id: userId,
-      component_id: componentId,
-      type: 'component',
-      created_at: new Date()
-    });
-    
-    await favorite.save();
-    
-    // Update the component to mark it as a favorite
+    // Update the component to mark it as a favorite (only using the flag)
     await Component.findByIdAndUpdate(componentId, { favorite: true });
     
     return { success: true, message: "Component marked as favorite successfully" };
@@ -125,14 +102,7 @@ export async function removeComponentFavorite(userId, componentId) {
       return { success: false, error: "Missing required parameters: componentId and userId" };
     }
     
-    // Delete from favorites collection
-    await Favorite.deleteOne({
-      user_id: userId,
-      component_id: componentId,
-      type: 'component'
-    });
-    
-    // Update the component to unmark it as a favorite
+    // Update the component to unmark it as a favorite (only using the flag)
     await Component.findByIdAndUpdate(componentId, { favorite: false });
     
     return { success: true, message: "Component removed from favorites successfully" };
@@ -142,50 +112,50 @@ export async function removeComponentFavorite(userId, componentId) {
   }
 }
 
-export async function deleteFavoriteById(favoriteId) {
+export async function getFavoriteMeals(userId) {
   try {
     await connect();
     
-    // Find the favorite before deleting it to get its details
-    const favorite = await Favorite.findById(favoriteId);
-    
-    if (!favorite) {
-      return { success: false, error: "Favorite not found" };
+    if (!userId) {
+      return { success: false, error: "Missing required parameter: userId" };
     }
     
-    // Delete the favorite
-    await Favorite.findByIdAndDelete(favoriteId);
+    // Get all favorite meals for this user
+    const favorites = await Favorite.find({
+      user_id: userId,
+      type: 'meal'
+    });
     
-    // Update the related item's favorite status
-    if (favorite.type === 'meal' && favorite.meal_id) {
-      // Check if there are any other favorites for this meal
-      const otherFavorites = await Favorite.findOne({ 
-        meal_id: favorite.meal_id,
-        _id: { $ne: favoriteId }
-      });
-      
-      // If no other favorites, update the meal
-      if (!otherFavorites) {
-        await Meal.findByIdAndUpdate(favorite.meal_id, { favorite: false });
-      }
-    }
-    
-    if (favorite.type === 'component' && favorite.component_id) {
-      // Check if there are any other favorites for this component
-      const otherFavorites = await Favorite.findOne({ 
-        component_id: favorite.component_id,
-        _id: { $ne: favoriteId }
-      });
-      
-      // If no other favorites, update the component
-      if (!otherFavorites) {
-        await Component.findByIdAndUpdate(favorite.component_id, { favorite: false });
-      }
-    }
-    
-    return { success: true };
+    return { 
+      success: true, 
+      favorites: JSON.parse(JSON.stringify(favorites))
+    };
   } catch (error) {
-    console.error("Error removing favorite by ID:", error);
+    console.error("Error fetching favorite meals:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function getFavoriteComponents(userId) {
+  try {
+    await connect();
+    
+    if (!userId) {
+      return { success: false, error: "Missing required parameter: userId" };
+    }
+    
+    // Get all favorite components for this user (based on the favorite flag)
+    const components = await Component.find({
+      userId: userId,
+      favorite: true
+    });
+    
+    return { 
+      success: true, 
+      components: JSON.parse(JSON.stringify(components))
+    };
+  } catch (error) {
+    console.error("Error fetching favorite components:", error);
     return { success: false, error: error.message };
   }
 }
