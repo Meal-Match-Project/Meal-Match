@@ -38,7 +38,7 @@ export default function FavoriteComponentsList({ userId, favoriteComponents }) {
     <div>
       {components.length === 0 ? (
         <div className="text-center py-8 bg-white rounded-lg shadow-md">
-          <p className="text-gray-500">You don't have any favorite components yet.</p>
+          <p className="text-gray-500">You don&apos;t have any favorite components yet.</p>
         </div>
       ) : (
         <div className="bg-white rounded-lg shadow-md overflow-hidden">

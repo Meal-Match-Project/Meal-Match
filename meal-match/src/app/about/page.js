@@ -20,7 +20,7 @@ export default function AboutPage() {
           Meal Match is a website that simplifies and enhances the meal planning experience through an intuitive, component-based approach. Unlike traditional meal planning apps, which rely on fixed recipes, Meal Match allows users to prepare versatile meal components that can be combined in countless ways throughout the week. This approach maximizes variety, reduces food waste, and makes meal preparation both cost-effective and efficient.
         </p>
         <p className="text-lg mb-4">
-          By integrating AI, Meal Match goes beyond standard meal prep, offering personalized suggestions and innovative combinations based on ingredients users have on hand. Whether you're a busy professional, a student on a budget, or a family looking for meal inspiration, Meal Match provides a flexible and intelligent solution to make meal planning seamless, enjoyable, and fun.
+          By integrating AI, Meal Match goes beyond standard meal prep, offering personalized suggestions and innovative combinations based on ingredients users have on hand. Whether you&apos;re a busy professional, a student on a budget, or a family looking for meal inspiration, Meal Match provides a flexible and intelligent solution to make meal planning seamless, enjoyable, and fun.
         </p>
       </section>
 
@@ -53,7 +53,7 @@ export default function AboutPage() {
             Meal Match was born from a simple idea: what if meal prepping becomes flexible and personalized as your lifestyle?
           </p>
           <p className="text-lg mb-4">
-            Whether you're a fitness enthusiast, a busy professional or student, or someone who simply wants to eat better without the daily hassle of meal planning,
+            Whether you&apos;re a fitness enthusiast, a busy professional or student, or someone who simply wants to eat better without the daily hassle of meal planning,
             we provide Meal Match to give you the tools that customize your meals exactly how you want.
           </p>
           <p className="text-lg mb-4">

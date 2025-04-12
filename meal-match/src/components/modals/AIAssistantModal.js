@@ -13,10 +13,10 @@ import {
 } from '@/actions/mistralAI';
 
 function FormattedMessage({ content }) {
-  if (!content) return null;
-  
   // Process the content to apply formatting
   const formattedContent = useMemo(() => {
+    if (!content) return null;
+  
     // Pre-process the content to ensure consistent formatting
     let processedContent = content
       // Make sure section headers have newlines before them

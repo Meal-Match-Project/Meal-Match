@@ -44,7 +44,7 @@ export default function IngredientsPage({ userId, ingredients = [] }) {
     };
     
     refreshIngredients();
-  }, [userId, activeTab]);
+  }, [userId, activeTab, setIngredientsData]);
 
   const handleIngredientClick = (ingredient) => {
     setSelectedIngredient(ingredient);

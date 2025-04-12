@@ -92,7 +92,7 @@ export default function FavoriteMealsList({ userId, favoriteMeals, weeklyCompone
     <div>
       {meals.length === 0 ? (
         <div className="text-center py-8 bg-white rounded-lg shadow-md">
-          <p className="text-gray-500">You don't have any favorite meals yet.</p>
+          <p className="text-gray-500">You don&apos;t have any favorite meals yet.</p>
         </div>
       ) : (
         <>

@@ -15,7 +15,7 @@ const EmptyTemplatesView = ({ userId }) => (
   <div className="text-center py-12 bg-gray-50 rounded-lg">
     <h3 className="text-xl font-medium text-gray-700 mb-2">No templates found</h3>
     <p className="text-gray-500">
-      You don't have any meal plan templates yet.
+      You don&apos;t have any meal plan templates yet.
     </p>
     <p className="mt-4">
       <a 

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import CustomButton from "./ui/CustomButton";
 import { XCircle, CheckCircle, AlertTriangle } from 'lucide-react';
 import { signIn } from "next-auth/react";
+import Link from "next/link";
 
 const Login = () => {
   const router = useRouter();
@@ -106,7 +107,7 @@ const Login = () => {
     <div className="flex flex-col justify-center items-center min-h-screen bg-gray-100 relative">
       <h1 className="text-4xl font-bold text-orange-600 mb-6">Meal Match</h1>
 
-      <a href="/" className="absolute top-4 left-4 text-xl font-bold text-orange-600 hover:text-orange-800">
+      <Link href="/" className="absolute top-4 left-4 text-xl font-bold text-orange-600 hover:text-orange-800">
         <svg
           xmlns="http://www.w3.org/2000/svg"
           fill="none"
@@ -118,7 +119,7 @@ const Login = () => {
           <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l9-9m0 0l9 9m-9-9v14"/>
         </svg>
         Home
-      </a>
+      </Link>
 
       <div className="bg-white p-8 rounded-lg shadow-md w-96 max-w-full">
         <h2 className="text-2xl font-bold text-center text-orange-600 mb-6">
@@ -185,10 +186,10 @@ const Login = () => {
         </form>
 
         <p className="mt-4 text-center text-gray-600">
-          Don't have an account?{" "}
-          <a href="/register" className="text-orange-500 hover:underline">
+          Don&apos;t have an account?{" "}
+          <Link href="/register" className="text-orange-500 hover:underline">
             Sign up
-          </a>
+          </Link>
         </p>
       </div>
     </div>

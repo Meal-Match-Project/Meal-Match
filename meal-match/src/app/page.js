@@ -54,7 +54,7 @@ export default function Home() {
           <div className="grid md:grid-cols-3 gap-8">
             <div className="bg-stone-100 p-6 rounded-2xl shadow-md">
               <h3 className="text-xl font-semibold mb-2">Personalized Meals</h3>
-              <p>Get recommendations based on your tastes, dietary restrictions, and what's in your fridge.</p>
+              <p>Get recommendations based on your tastes, dietary restrictions, and what&apos;s in your fridge.</p>
             </div>
             <div className="bg-stone-100 p-6 rounded-2xl shadow-md">
               <h3 className="text-xl font-semibold mb-2">Ingredient Optimization</h3>

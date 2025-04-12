@@ -1,4 +1,5 @@
 import { CalendarDays } from 'lucide-react';
+import Image from "next/image";
 
 export default function TemplateCard({ template, onClick, onImport, isOwner }) {
   return (
@@ -7,7 +8,7 @@ export default function TemplateCard({ template, onClick, onImport, isOwner }) {
         {/* Template image or placeholder */}
         <div className="h-40 bg-orange-100 flex items-center justify-center">
           {template.image_url ? (
-            <img 
+            <Image
               src={template.image_url} 
               alt={template.name} 
               className="w-full h-full object-cover"

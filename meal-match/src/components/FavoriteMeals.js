@@ -5,24 +5,6 @@ import { useParams } from 'next/navigation';
 import FavoritesModal from '@/app/components/modals/FavoritesModal';
 
 export default function FavoriteMeals({ weeklyComponents }) {
-  // Example defaults
-  const defaults = [
-    {
-      name: 'Tuna salad wrap',
-      components: ['Crepes', 'Mashed sweet potato', 'Tuna salad', 'Baby spinach'],
-      toppings: ['Roasted red pepper', 'Cucumber'],
-    },
-    {
-      name: 'Roasted red pepper chickpea salad',
-      components: ['Crisped chickpeas', 'Balsamic vinaigrette', 'Pickled red onions', 'Baby spinach'],
-      toppings: ['Roasted red pepper', 'Diced cucumber', 'Feta'],
-    },
-    {
-      name: 'Broccoli and chickpea stuffed sweet potato',
-      components: ['Baked sweet potato', 'Roasted broccoli', 'Crisped chickpeas'],
-      toppings: ['Pickled red onions', 'Feta', 'Tahini'],
-    },
-  ];
 
   const { userId: urlUserId } = useParams();
   const [userId, setUserId] = useState(null);
@@ -42,6 +24,25 @@ export default function FavoriteMeals({ weeklyComponents }) {
   }, [urlUserId]);
 
   useEffect(() => {
+    // Example defaults
+    const defaults = [
+      {
+        name: 'Tuna salad wrap',
+        components: ['Crepes', 'Mashed sweet potato', 'Tuna salad', 'Baby spinach'],
+        toppings: ['Roasted red pepper', 'Cucumber'],
+      },
+      {
+        name: 'Roasted red pepper chickpea salad',
+        components: ['Crisped chickpeas', 'Balsamic vinaigrette', 'Pickled red onions', 'Baby spinach'],
+        toppings: ['Roasted red pepper', 'Diced cucumber', 'Feta'],
+      },
+      {
+        name: 'Broccoli and chickpea stuffed sweet potato',
+        components: ['Baked sweet potato', 'Roasted broccoli', 'Crisped chickpeas'],
+        toppings: ['Pickled red onions', 'Feta', 'Tahini'],
+      },
+    ];
+
     if (userId) {
       // Load saved meals
       const storedFavorites = localStorage.getItem(`savedMeals-${userId}`);

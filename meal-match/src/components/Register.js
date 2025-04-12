@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import CustomButton from "./ui/CustomButton";
 import { CheckCircle, XCircle, AlertTriangle, X } from 'lucide-react';
 import { signIn } from "next-auth/react";
+import Link from "next/link";
 
 
 // Add these option arrays
@@ -79,7 +80,7 @@ const Register = () => {
       });
       setErrors(newErrors);
     }
-  }, [formData, hasSubmitted]);
+  }, [formData, hasSubmitted, errors, validations.email]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -281,7 +282,7 @@ const Register = () => {
       <h1 className="text-4xl font-bold text-orange-600 mb-6">Meal Match</h1>
 
       {/* Home Button */}
-      <a href="/" className="absolute top-4 left-4 text-xl font-bold text-orange-600 hover:text-orange-800">
+      <Link href="/" className="absolute top-4 left-4 text-xl font-bold text-orange-600 hover:text-orange-800">
         <svg
           xmlns="http://www.w3.org/2000/svg"
           fill="none"
@@ -297,7 +298,7 @@ const Register = () => {
           />
         </svg>
         Home
-      </a>
+      </Link>
 
       <div className="bg-white p-8 rounded-lg shadow-md w-96 max-w-full">
         <h2 className="text-2xl font-bold text-center text-orange-600 mb-6">
@@ -478,9 +479,9 @@ const Register = () => {
 
         <p className="mt-4 text-center text-gray-600">
           Already have an account?{" "}
-          <a href="/login" className="text-orange-500 hover:underline">
+          <Link href="/login" className="text-orange-500 hover:underline">
             Log in
-          </a>
+          </Link>
         </p>
       </div>
     </div>
