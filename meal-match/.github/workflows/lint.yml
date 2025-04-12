@@ -2,9 +2,9 @@ name: Lint Check
 
 on:
   push:
-    branches: [main]
+    branches: [nextjs]
   pull_request:
-    branches: [main]
+    branches: [nextjs]
 
 jobs:
   eslint:
