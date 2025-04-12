@@ -1,7 +1,9 @@
 "use server";
 
 import { Mistral } from "@mistralai/mistralai";
-import { getUserComponentData } from "./getUserComponentData";
+import { getUserComponentData } from "./componentActions";
+import { getInStockIngredients } from "./ingredientActions";
+
 
 const apiKey = process.env.MISTRAL_API_KEY;
 const mistral = new Mistral({ apiKey });
@@ -254,6 +256,17 @@ export async function generateWeeklyTemplate(userId, options = {}) {
     // Get the user's component data and dietary info
     const userData = await getUserComponentData(userId);
     
+    // Get ingredients the user already has in stock
+    const ingredientsResult = await getInStockIngredients(userId);
+    const inStockIngredients = ingredientsResult.success 
+      ? ingredientsResult.ingredients 
+      : [];
+    
+    // Format in-stock ingredients for the prompt
+    const formattedIngredients = inStockIngredients.map(ing => 
+      `${ing.name} (${ing.amount} ${ing.unit}${ing.category ? `, ${ing.category}` : ''})`
+    ).join(', ');
+    
     // Create a simplified prompt for the AI to generate just components and example meals
     const prompt = `
       You are a meal planning expert. Create a list of versatile, reusable components that a user should prepare for their weekly meal plan.
@@ -264,12 +277,13 @@ export async function generateWeeklyTemplate(userId, options = {}) {
       2. These components should be versatile and reusable in different meal combinations.
       3. Include 5-8 example meal ideas using these components that combine 1 protein, 1 grain, 1-2 veggies, 1 sauce, and 1-2 extras
       4. Components should have clear descriptions, prep times, and storage life.
+      5. Whenever possible, prioritize using ingredients the user already has in stock.
       
       USER INFORMATION:
-      Current Components: ${userData.components.map(c => c.name).join(', ') || 'None available'}
       User Dietary Preferences: ${userData.userDietaryInfo.preferences.join(', ') || 'None specified'}
       User Allergies: ${userData.userDietaryInfo.allergies.join(', ') || 'None specified'}
       Additional Preferences: ${options.additionalPreferences || 'None specified'}
+      Ingredients already available: ${formattedIngredients || 'None specified'}
       
       Return your response as a JSON object with this structure:
       {
@@ -293,7 +307,9 @@ export async function generateWeeklyTemplate(userId, options = {}) {
         ]
       }
       
-      Ensure the components are practical, easy to prepare, and that the example meal ideas make sense. Draw from the examples below and from your own knowledge of meal prep and planning.
+      Ensure the components are practical, easy to prepare, and that the example meal ideas make sense. When possible, design components that utilize the user's already available ingredients: ${formattedIngredients || 'None specified'}
+      
+      Draw from the examples below and from your own knowledge of meal prep and planning.
       Examples of components include:
 
       -------
@@ -435,10 +451,20 @@ export async function generateWeeklyTemplate(userId, options = {}) {
  */
 export async function getGeneralFoodAdvice(userId, chatHistory = []) {
   try {
-    // Create the system message for general food advice
+    // Create the system message for general food advice with formatting instructions
     const systemMessage = {
       role: 'system',
-      content: 'You are a helpful culinary assistant providing general advice about food, cooking, and meal ideas. Provide conversational advice about cooking techniques, food pairings, meal planning, and nutritional information. Do not format responses as structured data - just give helpful plain text information.'
+      content: `You are a helpful culinary assistant providing general advice about food, cooking, and meal ideas. 
+      
+      FORMAT YOUR RESPONSES WITH CLEAR STRUCTURE:
+      - Use section headers with ## for main topics
+      - Use bullet points for lists
+      - Keep paragraphs short and separated by blank lines
+      - Use numbered steps for instructions
+      - Highlight important terms with *asterisks*
+      
+      Provide conversational advice about cooking techniques, food pairings, meal planning, and nutritional information.
+      Do not format responses as JSON - just give helpful, well-structured text information.`
     };
     
     // Format the messages for the API call
@@ -449,7 +475,7 @@ export async function getGeneralFoodAdvice(userId, chatHistory = []) {
     
     // Get response from Mistral
     const response = await mistral.chat.complete({
-      model: "mistral-large-latest",
+      model: "mistral-small-latest",
       messages: messages,
       temperature: 0.7
     });

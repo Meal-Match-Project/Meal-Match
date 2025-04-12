@@ -3,8 +3,7 @@ import {
   addComponent, 
   updateComponent, 
   deleteComponent,
-  addComponentFavorite,
-  deleteFavoriteById
+  addComponentFavorite
 } from '@/services/apiService';
 
 export default function useComponentsData(initialComponents = [], userId) {

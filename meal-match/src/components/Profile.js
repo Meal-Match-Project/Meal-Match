@@ -370,28 +370,6 @@ export default function Profile({ userId }) {
                   />
                 </div>
                 
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700">Password</label>
-                  <div className="relative">
-                    <input
-                      type={passwordVisible ? "text" : "password"}
-                      name="password"
-                      value={profile.password}
-                      onChange={handleChange}
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-orange-500 focus:border-orange-500 text-black"
-                    />
-                    <button 
-                      type="button" 
-                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-orange-500"
-                      onClick={() => setPasswordVisible(!passwordVisible)}
-                    >
-                      {passwordVisible ? 'Hide' : 'Show'}
-                    </button>
-                  </div>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Leave as is if you don't want to change your password.
-                  </p>
-                </div>
                 
                 <div>
                   <label className="block text-sm font-semibold text-gray-700">Dietary Preferences</label>

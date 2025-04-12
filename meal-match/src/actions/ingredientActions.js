@@ -37,6 +37,29 @@ export async function getIngredients(userId) {
   }
 }
 
+
+export async function getInStockIngredients(userId) {
+  try {
+    if (!userId) {
+      return { success: false, error: "User ID is required" };
+    }
+    
+    await connect();
+    const ingredients = await Ingredient.find({ 
+      userId, 
+      status: "in-stock" 
+    }).lean();
+    
+    return { 
+      success: true, 
+      ingredients: JSON.parse(JSON.stringify(ingredients))
+    };
+  } catch (error) {
+    console.error("Error fetching in-stock ingredients:", error);
+    return { success: false, error: error.message, ingredients: [] };
+  }
+}
+
 export async function updateIngredient(ingredientId, ingredientData) {
   try {
     if (!ingredientId) {

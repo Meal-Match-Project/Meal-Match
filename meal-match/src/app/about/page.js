@@ -7,7 +7,7 @@ export default function AboutPage() {
 
       {/* Hero Section */}
       <section className="bg-orange-500 text-white py-20 px-6 text-center">
-        <h1 className="text-5xl font-bold mb-4">Welcome to Meal Match</h1>
+        <h1 className="text-5xl font-bold mb-4">Meal Prep Revolutionized.</h1>
         <p className="text-xl max-w-2xl mx-auto">
           Personalized meal planning that fits your preferences
         </p>
@@ -46,18 +46,20 @@ export default function AboutPage() {
       </section>
 
       {/* Closing Section */}
-      <section className="bg-orange-100 max-w-5xl mx-auto px-6 py-16">
-        <h2 className="text-3xl font-bold text-orange-600 mb-6">Who We Are</h2>
-        <p className="text-lg mb-4">
-          Meal Match was born from a simple idea: what if meal prepping becomes flexible and personalized as your lifestyle?
-        </p>
-        <p className="text-lg mb-4">
-          Whether you're a fitness enthusiast, a busy professional or student, or someone who simply wants to eat better without the daily hassle of meal planning,
-          we provide Meal Match to give you the tools that customize your meals exactly how you want.
-        </p>
-        <p className="text-lg mb-4">
-          With our intuitive templates, mix-and-match food ingredients, and personalized recommendations, we aim to make your meal prepping enjoyable.
-        </p>
+      <section className="bg-orange-100 py-16">
+        <div className="max-w-5xl mx-auto px-6">
+          <h2 className="text-3xl font-bold text-orange-600 mb-6">Who We Are</h2>
+          <p className="text-lg mb-4">
+            Meal Match was born from a simple idea: what if meal prepping becomes flexible and personalized as your lifestyle?
+          </p>
+          <p className="text-lg mb-4">
+            Whether you're a fitness enthusiast, a busy professional or student, or someone who simply wants to eat better without the daily hassle of meal planning,
+            we provide Meal Match to give you the tools that customize your meals exactly how you want.
+          </p>
+          <p className="text-lg mb-4">
+            With our intuitive templates, mix-and-match food ingredients, and personalized recommendations, we aim to make your meal prepping enjoyable.
+          </p>
+        </div>
       </section>
     </div>
   );

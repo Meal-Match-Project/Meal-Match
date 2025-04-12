@@ -3,13 +3,42 @@
 import { useState, useEffect } from 'react';
 import FavoriteMealsList from './FavoriteMealsList';
 import FavoriteComponentsList from './FavoriteComponentsList';
+import { getFavoriteMeals, getFavoriteComponents } from '@/actions/favoriteActions';
 
-export default function FavoritesPage({ userId, favoriteMeals, favoriteComponents, weeklyComponents }) {
+export default function FavoritesPage({ userId, weeklyComponents }) {
     const [activeTab, setActiveTab] = useState('meals');
+    const [favoriteMeals, setFavoriteMeals] = useState([]);
+    const [favoriteComponents, setFavoriteComponents] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+    
+    // Fetch favorites data
+    useEffect(() => {
+      async function fetchFavorites() {
+        if (userId) {
+          setIsLoading(true);
+          
+          // Fetch favorite meals (stored as complete objects in Favorites collection)
+          const mealsResult = await getFavoriteMeals(userId);
+          if (mealsResult.success) {
+            setFavoriteMeals(mealsResult.favorites);
+          }
+          
+          // Fetch favorite components (components with favorite=true)
+          const componentsResult = await getFavoriteComponents(userId);
+          if (componentsResult.success) {
+            setFavoriteComponents(componentsResult.components);
+          }
+          
+          setIsLoading(false);
+        }
+      }
+      
+      fetchFavorites();
+    }, [userId]);
     
     // Debug logging
     useEffect(() => {
-      console.log("FavoritesPage received props:", { 
+      console.log("FavoritesPage state:", { 
         userId, 
         favoriteMeals, 
         favoriteComponents, 
@@ -39,21 +68,31 @@ export default function FavoritesPage({ userId, favoriteMeals, favoriteComponent
         </div>
       </div>
       
+      {/* Loading State */}
+      {isLoading && (
+        <div className="w-3/4 mx-auto text-center py-8">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading favorites...</p>
+        </div>
+      )}
+      
       {/* Content based on active tab */}
-      <div className="w-3/4 mx-auto">
-        {activeTab === 'meals' ? (
-          <FavoriteMealsList 
-            userId={userId}
-            favoriteMeals={favoriteMeals} 
-            weeklyComponents={weeklyComponents.map(comp => comp.name)} 
-          />
-        ) : (
-          <FavoriteComponentsList 
-            userId={userId}
-            favoriteComponents={favoriteComponents} 
-          />
-        )}
-      </div>
+      {!isLoading && (
+        <div className="w-3/4 mx-auto">
+          {activeTab === 'meals' ? (
+            <FavoriteMealsList 
+              userId={userId}
+              favoriteMeals={favoriteMeals} 
+              weeklyComponents={weeklyComponents.map(comp => comp.name)} 
+            />
+          ) : (
+            <FavoriteComponentsList 
+              userId={userId}
+              favoriteComponents={favoriteComponents} 
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 }

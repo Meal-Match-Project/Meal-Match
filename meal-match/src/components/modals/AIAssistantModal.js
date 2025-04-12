@@ -1,8 +1,143 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { X, SendHorizontal, Loader2, Sparkles, Calendar, Plus, MessageCircle, CalendarDays, ChevronDown, RotateCcw } from 'lucide-react';
-import { getMealRecommendationChat, getMealRecommendations, generateWeeklyTemplate, getGeneralFoodAdvice } from '@/actions/mistralAI';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { 
+  X, MessageCircle, Plus, ChevronDown, Trash2, Sparkles, 
+  Loader2, SendHorizontal, RotateCcw, CalendarDays
+} from 'lucide-react';
+import {
+  getMealRecommendations,
+  getMealRecommendationChat,
+  generateWeeklyTemplate,
+  getGeneralFoodAdvice
+} from '@/actions/mistralAI';
+
+function FormattedMessage({ content }) {
+  if (!content) return null;
+  
+  // Process the content to apply formatting
+  const formattedContent = useMemo(() => {
+    // Pre-process the content to ensure consistent formatting
+    let processedContent = content
+      // Make sure section headers have newlines before them
+      .replace(/\n(#+\s)/g, '\n\n$1')
+      // Ensure list items are preceded by newlines if they aren't already
+      .replace(/([^\n])\n-\s/g, '$1\n\n- ')
+      // Ensure numbered items are preceded by newlines if they aren't already
+      .replace(/([^\n])\n(\d+\.)\s/g, '$1\n\n$2 ');
+    
+    // Split by double newlines to separate paragraphs
+    const paragraphs = processedContent.split(/\n\n+/);
+    
+    return paragraphs.map((paragraph, index) => {
+      // Trim the paragraph to remove any leading/trailing whitespace
+      const trimmedParagraph = paragraph.trim();
+      
+      // Skip empty paragraphs
+      if (!trimmedParagraph) return null;
+      
+      // Check if this is a section header
+      if (/^#+\s/.test(trimmedParagraph)) {
+        const level = (trimmedParagraph.match(/^#+/)[0] || '').length;
+        const title = trimmedParagraph.replace(/^#+\s*/, '');
+        
+        // Different styling based on header level
+        if (level === 1) {
+          return (
+            <h2 key={index} className="text-xl font-bold mt-6 mb-3 text-orange-600">
+              {title}
+            </h2>
+          );
+        } else {
+          return (
+            <h3 key={index} className="text-lg font-bold mt-4 mb-2 text-gray-800">
+              {title}
+            </h3>
+          );
+        }
+      }
+      
+      // Check if this is a bulleted list - look for lines starting with -
+      if (trimmedParagraph.includes('\n- ') || trimmedParagraph.startsWith('- ')) {
+        const listItems = trimmedParagraph
+          .split(/\n-\s*/g)
+          .filter(Boolean)
+          .map(item => item.trim());
+          
+        return (
+          <ul key={index} className="list-disc pl-5 my-3 space-y-1.5">
+            {listItems.map((item, i) => {
+              // Process any emphasis within list items
+              const processedItem = item.replace(/\*([^*]+)\*/g, '<strong>$1</strong>');
+              return <li key={i} dangerouslySetInnerHTML={{ __html: processedItem }} />;
+            })}
+          </ul>
+        );
+      }
+      
+      // Check if this is a numbered list - look for lines starting with 1. etc
+      if (/\n\d+\.\s/.test('\n' + trimmedParagraph) || /^\d+\.\s/.test(trimmedParagraph)) {
+        const listItems = trimmedParagraph
+          .split(/\n\d+\.\s*/g)
+          .filter(Boolean)
+          .map(item => item.trim());
+          
+        return (
+          <ol key={index} className="list-decimal pl-5 my-3 space-y-1.5">
+            {listItems.map((item, i) => {
+              // Process any emphasis within list items
+              const processedItem = item.replace(/\*([^*]+)\*/g, '<strong>$1</strong>');
+              return <li key={i} dangerouslySetInnerHTML={{ __html: processedItem }} />;
+            })}
+          </ol>
+        );
+      }
+      
+      // Handle emphasis with asterisks
+      const processedText = trimmedParagraph.replace(/\*([^*]+)\*/g, '<strong>$1</strong>');
+      
+      // Regular paragraph
+      return (
+        <p key={index} className="my-2.5" 
+           dangerouslySetInnerHTML={{ __html: processedText }} />
+      );
+    });
+  }, [content]);
+  
+  return (
+    <div className="formatted-content prose prose-sm max-w-none">
+      {formattedContent}
+      
+      <style jsx global>{`
+        .formatted-content h2 {
+          color: #ea580c; /* orange-600 */
+          margin-top: 1.5rem;
+          margin-bottom: 0.75rem;
+        }
+        .formatted-content h3 {
+          color: #1f2937; /* gray-800 */
+          margin-top: 1.25rem;
+          margin-bottom: 0.5rem;
+        }
+        .formatted-content ul, .formatted-content ol {
+          margin-left: 1.5rem;
+          margin-top: 0.75rem;
+          margin-bottom: 0.75rem;
+        }
+        .formatted-content li {
+          margin-bottom: 0.25rem;
+        }
+        .formatted-content p {
+          margin-bottom: 0.875rem;
+          line-height: 1.6;
+        }
+        .formatted-content strong {
+          font-weight: 600;
+        }
+      `}</style>
+    </div>
+  );
+}
 
 export default function AIAssistantModal({ userId, isOpen, onClose, onAddMealToPlanner, onApplyTemplate }) {
   const [chatHistory, setChatHistory] = useState([]);
@@ -279,7 +414,11 @@ export default function AIAssistantModal({ userId, isOpen, onClose, onAddMealToP
                         : 'bg-gray-100'
                     }`}
                   >
-                    {message.content}
+                    {message.role === 'user' ? (
+                      message.content
+                    ) : (
+                      <FormattedMessage content={message.content} />
+                    )}
                   </div>
                 ))
               )}
@@ -401,7 +540,7 @@ export default function AIAssistantModal({ userId, isOpen, onClose, onAddMealToP
                             {weeklyTemplate.components_to_prepare.map((component, idx) => (
                                 <div key={idx} className="bg-white p-2 rounded border">
                                 <div className="font-medium">{component.name}</div>
-                                <div className="text-sm">{component.description}</div>
+                                <div className="text-sm">{component.notes}</div>
                                 <div className="text-sm text-gray-600 mt-1">
                                     {component.prep_time}min prep • {component.storage_life} days storage
                                 </div>
