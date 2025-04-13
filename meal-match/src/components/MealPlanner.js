@@ -14,7 +14,7 @@ import SaveTemplateModal from './modals/SaveTemplateModal';
 import NotificationToast from './ui/NotificationToast';
 import ConfirmationModal from './ui/ConfirmationModal';
 import SaveStatusIndicator from './ui/SaveStatusIndicator';
-
+import ComponentsDetailDashboard from './ui/ComponentsDetailDashboard';
 // Custom Hooks
 import useNotification from '@/hooks/useNotification';
 import useMealComponents from '@/hooks/useMealComponents';
@@ -60,7 +60,7 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
   const [showClearWeekConfirm, setShowClearWeekConfirm] = useState(false);
   const [isTemplateImporting, setIsTemplateImporting] = useState(false);
   const [selectedComponent, setSelectedComponent] = useState(null);
-const [isComponentModalOpen, setIsComponentModalOpen] = useState(false);
+  const [isComponentModalOpen, setIsComponentModalOpen] = useState(false);
 
 
 
@@ -674,24 +674,7 @@ const [isComponentModalOpen, setIsComponentModalOpen] = useState(false);
           onClose={() => setShowTutorial(false)}
         />
       )}
-      <div className="mt-10 px-2">
-        <h2 className="text-2xl font-bold text-orange-600 mb-4">My Components</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {componentsData.map((comp) => (
-            <div
-              key={comp._id}
-              className="bg-white p-4 rounded shadow hover:shadow-lg cursor-pointer border"
-              onClick={() => {
-                setSelectedComponent(comp);
-                setIsComponentModalOpen(true);
-              }}
-            >
-              <h3 className="text-lg font-semibold text-gray-800">{comp.name}</h3>
-              <p className="text-sm text-gray-500">Category: {comp.category}</p>
-            </div>
-          ))}
-        </div>
-      </div>
+      
       <div className="flex justify-between items-center mb-4">
         <div className="flex gap-3">
           <button 
@@ -787,6 +770,11 @@ const [isComponentModalOpen, setIsComponentModalOpen] = useState(false);
             onMoveComponent={handleMoveComponent}
             dayInfo={daysInfo}
             isFullWidth={compSidebarCollapsed}
+            setSelectedComponent={(componentName) => {
+              const fullComponent = componentsData.find(c => c.name === componentName);
+              if (fullComponent) setSelectedComponent(fullComponent);
+            }}
+            setIsComponentModalOpen={setIsComponentModalOpen}
             className="h-full"
           />
           </div>
@@ -795,26 +783,6 @@ const [isComponentModalOpen, setIsComponentModalOpen] = useState(false);
           {activeItem ? <DraggableItem id={activeItem} /> : null}
         </DragOverlay>
       </DndContext>
-
-      {isComponentModalOpen && selectedComponent && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center">
-          <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6 relative">
-            <h2 className="text-2xl font-bold text-orange-600 mb-4">{selectedComponent.name}</h2>
-            <p className="mb-2"><strong>Category:</strong> {selectedComponent.category}</p>
-            <p className="mb-2"><strong>Calories:</strong> {selectedComponent.calories}</p>
-            <p className="mb-2"><strong>Description:</strong> {selectedComponent.description || "No description provided."}</p>
-
-            <button
-              className="absolute top-2 right-2 text-gray-500 hover:text-gray-700 text-2xl"
-              onClick={() => setIsComponentModalOpen(false)}
-              aria-label="Close"
-            >
-              ×
-            </button>
-          </div>
-        </div>
-      )}
-
 
       {/* AI Assistant Modal */}
       <AIAssistantModal
@@ -863,6 +831,11 @@ const [isComponentModalOpen, setIsComponentModalOpen] = useState(false);
           setShowClearWeekConfirm(false);
         }}
         onCancel={() => setShowClearWeekConfirm(false)}
+      />
+      <ComponentsDetailDashboard
+        component={selectedComponent}
+        isOpen={isComponentModalOpen}
+        onClose={() => setIsComponentModalOpen(false)}
       />
     </>
   );

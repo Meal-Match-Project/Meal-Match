@@ -14,6 +14,8 @@ export default function MealGrid({
     onMoveComponent,
     dayInfo = [],
     isFullWidth = false,
+    setSelectedComponent,
+    setIsComponentModalOpen,
     className = ""
   }) {
     // Use dynamic days from dayInfo, or fallback to default days if not provided
@@ -87,6 +89,8 @@ export default function MealGrid({
                       onClearMeal={onClearMeal}
                       onMoveComponent={onMoveComponent}
                       validComponentNames={validComponentNames}
+                      setSelectedComponent={setSelectedComponent}
+                      setIsComponentModalOpen={setIsComponentModalOpen}
                     />
                   );
                 })}
@@ -98,7 +102,7 @@ export default function MealGrid({
     );
   }
 
-function DroppableMeal({ id, meal, onRemoveComponent, onAddMiniComponent, onMealClick, onClearMeal, onMoveComponent, validComponentNames }) {
+function DroppableMeal({ id, meal, onRemoveComponent, onAddMiniComponent, onMealClick, onClearMeal, onMoveComponent, validComponentNames, setSelectedComponent, setIsComponentModalOpen }) {
     const { setNodeRef, isOver } = useDroppable({ id });
     const [miniComponentInput, setMiniComponentInput] = useState('');
     const [showOptions, setShowOptions] = useState(false);
@@ -190,6 +194,9 @@ function DroppableMeal({ id, meal, onRemoveComponent, onAddMiniComponent, onMeal
                     onRemoveComponent={onRemoveComponent}
                     onMoveComponent={onMoveComponent}
                     isValid={validComponentNames.includes(component)}
+                    setSelectedComponent={setSelectedComponent}
+                    setIsComponentModalOpen={setIsComponentModalOpen}
+                    components={components}
                 />
             ))}
 
@@ -224,7 +231,7 @@ function DroppableMeal({ id, meal, onRemoveComponent, onAddMiniComponent, onMeal
     );
 }
 
-function DraggableComponent({ mealId, component, index, onRemoveComponent, onMoveComponent, isValid }) {
+function DraggableComponent({ mealId, component, index, onRemoveComponent, onMoveComponent, isValid, setSelectedComponent, setIsComponentModalOpen, components }) {
     // Create a unique ID for this component instance in this meal
     const dragId = `meal-component:${mealId}:${component}:${index}`;
     
@@ -259,7 +266,18 @@ function DraggableComponent({ mealId, component, index, onRemoveComponent, onMov
                 <div className="mr-2 cursor-grab" {...listeners}>
                     <GripVertical className="w-4 h-4" />
                 </div>
-                <span>{component}</span>
+                <span
+                    onClick={() => {
+                        if (setSelectedComponent && setIsComponentModalOpen) {
+                        setSelectedComponent(component); 
+                        setIsComponentModalOpen(true);
+                        }
+                    }}
+                    className="hover:underline cursor-pointer"
+                    >
+                    {component}
+                </span>
+
             </div>
             <button
                 className="font-bold px-1 text-white"
