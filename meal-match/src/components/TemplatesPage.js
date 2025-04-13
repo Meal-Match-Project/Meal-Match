@@ -151,55 +151,57 @@ export default function TemplatesPage({ userId, templates: initialTemplates }) {
   const userTemplates = templates.filter(template => template.user_id === userId);
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <TemplatesHeader userId={userId} />
-      
-      {isLoading ? (
-        <div className="text-center py-12">
-          <p>Loading templates...</p>
-        </div>
-      ) : userTemplates.length > 0 ? (
-        <TemplatesGrid 
-          templates={userTemplates}
-          userId={userId}
-          onTemplateClick={handleTemplateClick}
-          onImportTemplate={handleImportTemplate}
-        />
-      ) : (
-        <EmptyTemplatesView userId={userId} />
-      )}
-      
-      {/* Template Detail Modal */}
-      {showModal && selectedTemplate && (
-        <TemplateDetailModal
-          template={selectedTemplate}
-          onClose={() => setShowModal(false)}
-          onImport={() => handleImportTemplate(selectedTemplate._id)}
-          onDelete={selectedTemplate.user_id === userId ? 
-                  () => handleDeleteTemplate(selectedTemplate._id) : 
-                  undefined}
-        />
-      )}
+    <div className="py-8">
+      <div className="container mx-auto px-4 py-8">
+        <TemplatesHeader userId={userId} />
+        
+        {isLoading ? (
+          <div className="text-center py-12">
+            <p>Loading templates...</p>
+          </div>
+        ) : userTemplates.length > 0 ? (
+          <TemplatesGrid 
+            templates={userTemplates}
+            userId={userId}
+            onTemplateClick={handleTemplateClick}
+            onImportTemplate={handleImportTemplate}
+          />
+        ) : (
+          <EmptyTemplatesView userId={userId} />
+        )}
+        
+        {/* Template Detail Modal */}
+        {showModal && selectedTemplate && (
+          <TemplateDetailModal
+            template={selectedTemplate}
+            onClose={() => setShowModal(false)}
+            onImport={() => handleImportTemplate(selectedTemplate._id)}
+            onDelete={selectedTemplate.user_id === userId ? 
+                    () => handleDeleteTemplate(selectedTemplate._id) : 
+                    undefined}
+          />
+        )}
 
-      {/* Delete Confirmation Modal */}
-      <ConfirmationModal
-        isOpen={showDeleteConfirm}
-        title="Delete Template"
-        message="Are you sure you want to delete this template? This action cannot be undone."
-        confirmText="Delete"
-        cancelText="Cancel"
-        onConfirm={performTemplateDelete}
-        onCancel={() => setShowDeleteConfirm(false)}
-        confirmButtonClass="bg-red-500 hover:bg-red-600 text-white"
-      />
+        {/* Delete Confirmation Modal */}
+        <ConfirmationModal
+          isOpen={showDeleteConfirm}
+          title="Delete Template"
+          message="Are you sure you want to delete this template? This action cannot be undone."
+          confirmText="Delete"
+          cancelText="Cancel"
+          onConfirm={performTemplateDelete}
+          onCancel={() => setShowDeleteConfirm(false)}
+          confirmButtonClass="bg-red-500 hover:bg-red-600 text-white"
+        />
 
-      {/* Notification Toast */}
-      <NotificationToast
-        show={notification.show}
-        message={notification.message}
-        type={notification.type}
-        onClose={hideNotification}
-      />
+        {/* Notification Toast */}
+        <NotificationToast
+          show={notification.show}
+          message={notification.message}
+          type={notification.type}
+          onClose={hideNotification}
+        />
+      </div>
     </div>
   );
 }

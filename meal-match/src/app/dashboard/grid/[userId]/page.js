@@ -194,7 +194,7 @@ export default async function Dashboard({ params }) {
   const { favoriteMeals, userComponents, userMeals, dayInfo } = userData;
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="bg-gray-100 min-h-screen">
       <LoggedInNav />
       <main className="w-full px-2 py-4">
         <Suspense fallback={<MealPlannerLoading />}>

@@ -21,7 +21,7 @@ export default async function Templates({ params }) {
   const serializedTemplates = JSON.parse(JSON.stringify(templates));
   
   return (
-    <>
+    <div className="bg-gray-100 min-h-screen">
       <LoggedInNav userId={userId} />
       <Suspense fallback={<div className="p-12 text-center">Loading templates...</div>}>
         <TemplatesPage 
@@ -29,6 +29,6 @@ export default async function Templates({ params }) {
           templates={serializedTemplates} 
         />
       </Suspense>
-    </>
+    </div>
   );
 }

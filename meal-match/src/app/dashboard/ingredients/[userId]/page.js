@@ -36,11 +36,11 @@ export default async function Ingredients({ params }) {
     const ingredients = await getIngredients(userId);
     
     return(
-        <>
+        <div className="bg-gray-100 min-h-screen">
             <LoggedInNav />
             <main className="relative">
                 <IngredientsPage userId={userId} ingredients={ingredients} />
             </main>
-        </>
+        </div>
     );
 }
