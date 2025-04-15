@@ -5,13 +5,6 @@ import { mealHasContent } from '@/utils/mealUtils';
 
 /**
  * Custom hook to handle drag and drop operations for meal components
- * @param {Object} options - Configuration options
- * @param {Array} options.componentsData - Component data array
- * @param {Function} options.setComponentsData - Function to update component data
- * @param {Array} options.mealsData - Meal data array
- * @param {Function} options.setMealsData - Function to update meal data
- * @param {Function} options.onSaveNeeded - Function to call when changes need to be saved
- * @returns {Object} - Drag and drop handlers and state
  */
 export default function useMealDragAndDrop({
   componentsData,
@@ -58,17 +51,16 @@ export default function useMealDragAndDrop({
     if (onSaveNeeded) onSaveNeeded();
   }, [setMealsData, onSaveNeeded]);
 
-  // Handle favorite meal drop
-  const handleFavoriteMealDrop = useCallback((favoriteMealId, targetMealId) => {
-    // Extract meal name from the id (remove 'meal-' prefix)
-    const mealName = favoriteMealId.replace('meal-', '');
+  // Handle favorite meal drop - UPDATED to use drag event data
+  const handleFavoriteMealDrop = useCallback((event, targetMealId) => {
+    // Get data from the drag event
+    const dragData = event.active.data.current;
     
-    // Find the matching favorite meal object
-    const favMealObj = mealsData.find((m) => m.name === mealName);
-    if (!favMealObj) return;
+    // Ensure we have valid data
+    if (!dragData) return;
     
-    // Get all component names from the favorite meal
-    const componentNames = favMealObj.components || [];
+    // Extract meal data from the drag event
+    const { mealName, components = [], toppings = [], notes = '' } = dragData;
     
     // First update the target meal to include all these components
     setMealsData((prev) => {
@@ -78,14 +70,14 @@ export default function useMealDragAndDrop({
               ...meal,
               components: [
                 ...meal.components,
-                ...componentNames,
+                ...components,
               ],
               toppings: [
-                ...meal.toppings,
-                ...(favMealObj.toppings || [])
+                ...meal.toppings || [],
+                ...toppings
               ],
-              name: favMealObj.name || meal.name,
-              notes: favMealObj.notes || meal.notes
+              name: mealName || meal.name,
+              notes: notes || meal.notes
             }
           : meal
       );
@@ -93,7 +85,7 @@ export default function useMealDragAndDrop({
     });
     
     // Then decrement the servings count for each component used
-    componentNames.forEach((compName) => {
+    components.forEach((compName) => {
       const compIndex = componentsData.findIndex(
         (comp) => comp.name === compName
       );
@@ -111,7 +103,7 @@ export default function useMealDragAndDrop({
     });
     
     if (onSaveNeeded) onSaveNeeded();
-  }, [componentsData, mealsData, setComponentsData, setMealsData, onSaveNeeded]);
+  }, [componentsData, setComponentsData, setMealsData, onSaveNeeded]);
 
   // Handle component drop
   const handleComponentDrop = useCallback((componentName, targetMealId) => {
@@ -155,7 +147,7 @@ export default function useMealDragAndDrop({
     return false;
   }, [componentsData, setComponentsData, setMealsData, onSaveNeeded]);
 
-  // Handle any drag end
+  // Handle any drag end - UPDATED to pass the full event to handlers
   const handleDragEnd = useCallback((event) => {
     const { active, over } = event;
     setActiveItem(null);
@@ -180,8 +172,9 @@ export default function useMealDragAndDrop({
     }
     
     // Case 1: If it's a favorite meal
-    if (draggedItemId.startsWith('meal-')) {
-      handleFavoriteMealDrop(draggedItemId, targetMealId);
+    if (draggedItemId.toString().startsWith('meal-')) {
+      // Pass the entire event to access drag data
+      handleFavoriteMealDrop(event, targetMealId);
       return;
     }
     

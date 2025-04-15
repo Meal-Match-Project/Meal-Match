@@ -260,6 +260,8 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
               notes: mealData.notes || '',
               day_of_week: mealData.day_of_week
             },
+            // Add type field to match schema
+            type: 'meal'
           };
           
           await addFavorite(favoriteData);
