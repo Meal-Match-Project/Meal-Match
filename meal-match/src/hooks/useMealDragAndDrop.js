@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { mealHasContent } from '@/utils/mealUtils';
 
 /**
@@ -107,17 +107,10 @@ export default function useMealDragAndDrop({
 
   // Handle component drop
   const handleComponentDrop = useCallback((componentName, targetMealId) => {
-    console.log('---- trying to drop component:', componentName);
-    console.log('---- target meal ID:', targetMealId);
-    console.log('---- available componentsData:', componentsData.map(c => ({
-      name: c.name,
-      servings: c.servings
-    })));
-  
     const compIndex = componentsData.findIndex(
       (comp) => comp.name === componentName
     );
-
+    
     if (compIndex !== -1) {
       const draggedComp = componentsData[compIndex];
       if (draggedComp.servings > 0) {
@@ -153,7 +146,7 @@ export default function useMealDragAndDrop({
     }
     return false;
   }, [componentsData, setComponentsData, setMealsData, onSaveNeeded]);
-   
+
   // Handle any drag end - UPDATED to pass the full event to handlers
   const handleDragEnd = useCallback((event) => {
     const { active, over } = event;
