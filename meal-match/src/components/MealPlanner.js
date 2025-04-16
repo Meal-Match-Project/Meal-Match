@@ -91,6 +91,10 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
     onSaveNeeded: () => markSaveNeeded() 
   });
 
+  useEffect(() => {
+    console.log("----mealsData updated:", mealsData);
+  }, [mealsData]);
+
   const { 
     isSaving, 
     lastSaved, 
@@ -114,6 +118,11 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
     setMealsData,
     onSaveNeeded: markSaveNeeded
   });
+
+  useEffect(() => {
+    console.log("----componentsData:", componentsData);
+  }, [componentsData]);
+  
 
   // Check if user has seen the tutorial
   useEffect(() => {
@@ -607,6 +616,7 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
               storage_life: component.storage_life || 5,
               ingredients: component.ingredients || [],
               notes: component.notes || '',
+              dietary_restrictions: component.dietary_restrictions || '',
               favorite: false,
               userId
             };
@@ -627,12 +637,15 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
                 setComponentsData(prev => [...prev, result.component]);
               }
             }
+            const updatedComponents = [...componentsData, ...addedComponents];
+            setComponentsData(updatedComponents);
+            console.log("componentsData after applying template:", updatedComponents);
           } catch (error) {
             console.error("Error adding components:", error);
             throw new Error("Failed to add some components to your collection");
           }
         }
-        
+
         showNotification(`Template applied successfully! Added ${componentsAdded} components.`, "success");
         markSaveNeeded();
       }
