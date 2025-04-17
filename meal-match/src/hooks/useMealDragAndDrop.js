@@ -116,18 +116,39 @@ export default function useMealDragAndDrop({
       if (draggedComp.servings > 0) {
         // Add it to that meal plan's array
         setMealsData((prev) => {
-          const updatedMeals = prev.map((meal) =>
-            meal._id === targetMealId
-              ? {
-                  ...meal,
-                  components: [
-                    ...meal.components,
-                    draggedComp.name,
-                  ],
-                }
-              : meal
-          );
-          return updatedMeals;
+          // Check if the meal already exists in the array
+          const mealExists = prev.some(meal => meal._id === targetMealId);
+          
+          if (mealExists) {
+            // Update existing meal
+            return prev.map((meal) =>
+              meal._id === targetMealId
+                ? {
+                    ...meal,
+                    components: [
+                      ...meal.components,
+                      draggedComp.name,
+                    ],
+                  }
+                : meal
+            );
+          } else {
+            // Create a new meal with parsed information from the ID
+            // Format is expected to be like "Monday-Breakfast"
+            const [day_of_week, meal_type] = targetMealId.split('-');
+            
+            // Add new meal to the array
+            return [...prev, {
+              _id: targetMealId,
+              day_of_week,
+              meal_type,
+              components: [draggedComp.name],
+              toppings: [],
+              notes: '',
+              name: '',
+              date: new Date() // Current date as fallback
+            }];
+          }
         });
         
         // Decrement the serving count in componentsData
