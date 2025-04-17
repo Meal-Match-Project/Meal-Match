@@ -65,23 +65,8 @@ function DraggableComponent({ id, count, component }) {
 }
 
 function DraggableMeal({ meal }) {
-  // Get the actual meal data (handle both data structures)
-  const mealData = meal.meal || meal;
-  
-  // Make sure we have a name property
-  const mealName = mealData.name || "Unnamed Meal";
-  
-  // Use useDraggable with additional data
-  const { attributes, listeners, setNodeRef } = useDraggable({ 
-    id: `meal-${mealName}`,
-    data: {
-      type: 'favorite-meal',
-      mealName: mealName,
-      components: mealData.components || [],
-      toppings: mealData.toppings || [],
-      notes: mealData.notes || ''
-    }
-  });
+  // Use meal-{name} as the ID format to match handleFavoriteMealDrop in MealPlanner
+  const { attributes, listeners, setNodeRef } = useDraggable({ id: `meal-${meal.name}` });
 
   return (
     <div
@@ -91,7 +76,7 @@ function DraggableMeal({ meal }) {
       className="p-2 rounded shadow-sm cursor-grab bg-white hover:bg-orange-50 truncate"
       style={{ touchAction: 'none' }}
     >
-      {mealName}
+      {meal.name}
     </div>
   );
 }
@@ -119,18 +104,16 @@ export default function ComponentsSidebar({
     [availableComponents]
   );
   
+  // Filter meals that match all available components
   const fullyAvailableMeals = useMemo(() => 
     // Check if favorites array exists and is not empty
     favorites && favorites.length > 0 
-      ? favorites.filter(favorite => {
-          // Get the meal object - either direct or nested
-          const meal = favorite.meal || favorite;
-          
+      ? favorites.filter(meal =>
           // Make sure meal has components array and every component is available
-          return meal.components && 
-            meal.components.length > 0 &&
-            meal.components.every(compName => availableComponentNames.includes(compName));
-        })
+          meal.components && 
+          meal.components.length > 0 &&
+          meal.components.every(compName => availableComponentNames.includes(compName))
+        )
       : [],
     [favorites, availableComponentNames]
   );
@@ -228,11 +211,8 @@ export default function ComponentsSidebar({
         >
           <div className="space-y-1">
             {fullyAvailableMeals.length > 0 ? (
-              fullyAvailableMeals.map((meal, index) => (
-                <DraggableMeal 
-                  key={meal._id || `favorite-meal-${index}`} 
-                  meal={meal} 
-                />
+              fullyAvailableMeals.map((meal) => (
+                <DraggableMeal key={meal._id} meal={meal} />
               ))
             ) : (
               <div className="text-white text-sm italic p-2">

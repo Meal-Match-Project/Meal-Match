@@ -93,22 +93,77 @@ export async function fetchUserData(userId) {
     }).lean();
     
     // If no or insufficient meals found for current week, initialize them
-    if (userMeals.length < 21) {
-      // ...existing code...
+    if (userMeals.length < 21) { // Should have 21 meals (7 days × 3 meal types)
+      const mealTypes = ['Breakfast', 'Lunch', 'Dinner'];
+      const newMealIds = [];
+      
+      console.log("Initializing meals for the next 7 days...");
+      
+      // Create lookup for existing meals to avoid duplicates
+      const existingMeals = {};
+      userMeals.forEach(meal => {
+        const key = `${meal.day_of_week}-${meal.meal_type}-${meal.date.toISOString().split('T')[0]}`;
+        existingMeals[key] = true;
+      });
+
+      // Create meal slots for each day and meal type
+      for (let i = 0; i < 7; i++) {
+        const currentDate = new Date(today);
+        currentDate.setDate(today.getDate() + i);
+        const dayOfWeek = nextSevenDays[i].name;
+
+        for (const mealType of mealTypes) {
+          const mealKey = `${dayOfWeek}-${mealType}-${currentDate.toISOString().split('T')[0]}`;
+          
+          // Skip if this meal already exists
+          if (existingMeals[mealKey]) continue;
+          
+          try {
+            // Create a new meal document
+            const newMeal = new Meal({
+              userId: userId,
+              date: currentDate,
+              day_of_week: dayOfWeek,
+              meal_type: mealType,
+              name: `${dayOfWeek} ${mealType}`,
+              notes: '',
+              components: [],
+              toppings: [],
+              favorite: false
+            });
+
+            // Save the meal and get its ID
+            const savedMeal = await newMeal.save();
+            newMealIds.push(savedMeal._id);
+          } catch (error) {
+            console.error(`Error creating meal ${dayOfWeek}-${mealType}:`, error);
+          }
+        }
+      }
+
+      // Update user with new meal IDs
+      if (newMealIds.length > 0) {
+        await User.findByIdAndUpdate(userId, {
+          $push: { meals: { $each: newMealIds } }
+        });
+      }
+
+      // Refetch meals to get the newly created ones
+      return fetchUserData(userId);
     }
 
-    // Fetch components and favorites
+    // Fetch components, favorites, and favorite meals
     const userComponents = await Component.find({
       userId: userId,
     }).lean();
 
-    // Get the favorites - now using the updated schema
     const userFavorites = await Favorite.find({
       user_id: userId,
     }).lean();
-    
-    // Extract favorite meals directly from the favorites objects
-    const favoriteMeals = userFavorites.map(favorite => favorite.meal || {});
+
+    const favoriteMeals = await Meal.find({
+      _id: { $in: userFavorites.map(fav => fav.meal_id).filter(id => id) },
+    }).lean();
 
     return { 
       favoriteMeals: convertIds(favoriteMeals), 
