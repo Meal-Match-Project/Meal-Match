@@ -87,7 +87,10 @@ export default function ComponentsSidebar({
   userId, 
   onAddComponent, 
   className = "" 
-}) {
+})
+{
+  console.log("Favorites at the start:", favorites);
+  console.log("Favorites components at the start:", components);
   const [openSections, setOpenSections] = useState({ components: true, meals: false });
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -105,18 +108,29 @@ export default function ComponentsSidebar({
   );
   
   // Filter meals that match all available components
-  const fullyAvailableMeals = useMemo(() => 
-    // Check if favorites array exists and is not empty
-    favorites && favorites.length > 0 
-      ? favorites.filter(meal =>
+  const fullyAvailableMeals = useMemo(() => {
+    // Log favorites to see if the array is populated
+    console.log("Favorites:", favorites);
+  
+    return favorites && favorites.length > 0
+      ? favorites.filter(meal => {
+          console.log("Meal:", meal);  // Log the whole meal object
+          console.log("Meal components:", meal.components);  // Log components of the meal
+  
           // Make sure meal has components array and every component is available
-          meal.components && 
-          meal.components.length > 0 &&
-          meal.components.every(compName => availableComponentNames.includes(compName))
-        )
-      : [],
-    [favorites, availableComponentNames]
-  );
+          if (meal.components && Array.isArray(meal.components)) {
+            console.log("Components are an array:", meal.components);
+            return meal.components.length > 0 &&
+              meal.components.every(compName => {
+                console.log("Checking component:", compName);
+                return availableComponentNames.includes(compName);
+              });
+          }
+  
+          return false; // In case meal.components is not an array or it's missing
+        })
+      : [];
+  }, [favorites, availableComponentNames]);
 
   // Filter components based on search
   const filteredComponents = useMemo(() => 

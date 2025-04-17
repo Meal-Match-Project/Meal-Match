@@ -157,13 +157,13 @@ export async function fetchUserData(userId) {
       userId: userId,
     }).lean();
 
-    const userFavorites = await Favorite.find({
-      user_id: userId,
-    }).lean();
-
-    const favoriteMeals = await Meal.find({
-      _id: { $in: userFavorites.map(fav => fav.meal_id).filter(id => id) },
-    }).lean();
+    const userFavorites = await Favorite.find({ user_id: userId }).lean();
+    const favoriteMeals = userFavorites.map(fav => ({
+      ...fav.meal,  // Include the full meal object
+      _id: fav._id,  // Include the ID of the favorite meal if available
+    }));
+    console.log("🍽️ favoriteMeals:", favoriteMeals);
+  
 
     return { 
       favoriteMeals: convertIds(favoriteMeals), 
