@@ -111,8 +111,9 @@ export async function getMealRecommendations(userId) {
     
     // Create a prompt for the AI
     const prompt = `
-      You are a helpful meal planning assistant. Based on the components the user has available,
-      suggest 3 different meals they could make. Consider their dietary preferences and allergies.
+      You are a meal planning expert. Based on the components the user has available,
+      suggest 3 different meals they could make out of what they have. Use your culinary expertise and knowledge of flavor profiles to build your answers.
+      Consider their dietary preferences and allergies.
       
       Available Components:
       ${JSON.stringify(userData.components, null, 2)}

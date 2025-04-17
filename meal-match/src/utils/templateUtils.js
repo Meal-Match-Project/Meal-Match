@@ -29,43 +29,50 @@ export function extractComponentsForTemplate(meals, componentsData) {
       }));
   }
   
-  /**
-   * Group meals by day of week for template format
-   * @param {Array} meals - Array of meal objects
-   * @returns {Array} Array of day objects with meals for template
-   */
-  export function groupMealsByDayForTemplate(meals) {
-    // Skip empty meals
-    const nonEmptyMeals = meals.filter(meal => 
-      (meal.components && meal.components.length > 0) || 
-      (meal.name && meal.name.trim() !== '')
-    );
+/**
+ * Group meals by day of week for template format
+ * @param {Array} meals - Array of meal objects
+ * @returns {Array} Array of day objects with meals for template
+ */
+
+export function groupMealsByDayForTemplate(meals) {
+  // Skip empty meals
+  const nonEmptyMeals = meals.filter(meal => 
+    (meal.components && meal.components.length > 0) || 
+    (meal.name && meal.name.trim() !== '')
+  );
+  
+  // Group by day
+  const mealsByDay = {};
+  
+  nonEmptyMeals.forEach(meal => {
+    const day = meal.day_of_week;
+    if (!mealsByDay[day]) {
+      mealsByDay[day] = new Map(); // Use Map to ensure unique meal types
+    }
     
-    // Group by day
-    const mealsByDay = {};
-    nonEmptyMeals.forEach(meal => {
-      const day = meal.day_of_week;
-      if (!mealsByDay[day]) {
-        mealsByDay[day] = [];
-      }
-      
-      mealsByDay[day].push({
-        meal_type: meal.meal_type,
+    const mealType = meal.meal_type;
+    
+    // Only add or replace if this meal has content
+    if (meal.components?.length > 0 || (meal.name && meal.name.trim() !== '')) {
+      mealsByDay[day].set(mealType, {
+        meal_type: mealType,
         meal: {
-          name: meal.name,
+          name: meal.name || '',
           components: meal.components || [],
           toppings: meal.toppings || [],
           notes: meal.notes || ''
         }
       });
-    });
-    
-    // Convert to array format
-    return Object.keys(mealsByDay).map(day => ({
-      day_of_week: day,
-      meals: mealsByDay[day]
-    }));
-  }
+    }
+  });
+  
+  // Convert to array format
+  return Object.keys(mealsByDay).map(day => ({
+    day_of_week: day,
+    meals: Array.from(mealsByDay[day].values()) // Convert Map values to array
+  }));
+}
   
   /**
    * Map template components to user component format

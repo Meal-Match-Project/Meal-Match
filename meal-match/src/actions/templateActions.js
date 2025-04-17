@@ -161,7 +161,8 @@ export async function importTemplate(templateId, userId) {
             prep_time: comp.prep_time,
             ingredients: comp.base_ingredients,
             servings: 3, // Default value
-            userId: userId
+            userId: userId,
+            favorite: false,
           });
           
           await newComponent.save();
@@ -175,40 +176,141 @@ export async function importTemplate(templateId, userId) {
       }
     }
     
-    // Import meals if they exist
+    // Get current week's days and meals
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Get all the user's existing meals for the week
+    const existingMeals = await Meal.find({ userId }).lean();
+    
+    // Get the current day names for this week (to match the user's current week)
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const currentWeekDays = [];
+    
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(today);
+      day.setDate(today.getDate() + i);
+      currentWeekDays.push({
+        date: new Date(day),
+        name: dayNames[day.getDay()],
+        display: i === 0 ? 'Today' : dayNames[day.getDay()]
+      });
+    }
+    
+    // Map template days to the current week days
+    const dayMapping = {};
     if (template.days && template.days.length > 0) {
-      // First clear existing meals for this user
-      await Meal.deleteMany({ userId });
-      
-      // Add new meals from template
+      template.days.forEach(templateDay => {
+        // Find matching day in current week
+        const matchingDay = currentWeekDays.find(day => 
+          day.name.toLowerCase() === templateDay.day_of_week.toLowerCase()
+        );
+        
+        if (matchingDay) {
+          dayMapping[templateDay.day_of_week] = matchingDay.name;
+        } else {
+          // If no exact match, keep the original
+          dayMapping[templateDay.day_of_week] = templateDay.day_of_week;
+        }
+      });
+    }
+    
+    // Process each day in the template
+    let mealsCreated = 0;
+    let mealsUpdated = 0;
+
+    // Define field name constants to ensure consistency
+    const DAY_FIELD = "day_of_week";
+    const MEAL_TYPE_FIELD = "meal_type";
+
+    console.log("Starting to process template days:", template.days.length);
+    console.log("Existing meals count:", existingMeals.length);
+
+    if (template.days && template.days.length > 0) {
       for (const day of template.days) {
+        const templateDayName = day.day_of_week;
+        // Use the mapped day name to match the current week
+        const currentDayName = dayMapping[templateDayName] || templateDayName;
+        
+        console.log(`Processing day: ${templateDayName} -> ${currentDayName}`);
+        
         if (day.meals && day.meals.length > 0) {
           for (const mealData of day.meals) {
-            const newMeal = new Meal({
-              name: mealData.meal.name || '',
-              components: mealData.meal.components || [],
-              toppings: mealData.meal.toppings || [],
-              notes: mealData.meal.notes || '',
-              day_of_week: day.day_of_week,
-              meal_type: mealData.meal_type,
-              userId
+            const mealType = mealData.meal_type;
+            
+            console.log(`  Processing meal type: ${mealType}`);
+            
+            const existingMeal = existingMeals.find(meal => {
+              // Make case-insensitive comparisons to avoid case-related duplicates
+              const dayMatches = (meal[DAY_FIELD] || '').toLowerCase() === currentDayName.toLowerCase();
+              const typeMatches = (meal[MEAL_TYPE_FIELD] || '').toLowerCase() === mealType.toLowerCase();
+              return dayMatches && typeMatches;
             });
             
-            await newMeal.save();
+            // Set components and meal data from the template
+            const mealComponents = mealData.meal.components || [];
+            const mealToppings = mealData.meal.toppings || [];
+            const mealName = mealData.meal.name || '';
+            const mealNotes = mealData.meal.notes || '';
+            
+            // Convert meal name if needed
+            let finalMealName = mealName;
+            if (!finalMealName) {
+              finalMealName = mealComponents.length > 0 
+                ? `${currentDayName} ${mealType}` 
+                : '';
+            }
+            
+            console.log(`  Components: ${mealComponents.join(', ')}`);
+            console.log(`  Existing meal found: ${!!existingMeal}`);
+            
+            try {
+              if (existingMeal) {
+                // Update the existing meal
+                console.log(`  Updating meal: ${existingMeal._id}`);
+                await Meal.findByIdAndUpdate(existingMeal._id, {
+                  $set: {
+                    name: finalMealName,
+                    components: mealComponents,
+                    toppings: mealToppings,
+                    notes: mealNotes
+                  }
+                });
+                mealsUpdated++;
+              } else {
+                // If no existing meal found, create a new one
+                console.log(`  Creating new meal for ${currentDayName} ${mealType}`);
+                const newMeal = new Meal({
+                  name: finalMealName,
+                  components: mealComponents,
+                  toppings: mealToppings,
+                  notes: mealNotes,
+                  [DAY_FIELD]: currentDayName,
+                  [MEAL_TYPE_FIELD]: mealType,
+                  userId: userId,
+                  date: new Date(),
+                  favorite: false  // Add this missing required field
+                });
+
+                await newMeal.save();
+                mealsCreated++;
+              }
+            } catch (mealError) {
+              console.error(`Error processing meal for ${currentDayName} ${mealType}:`, mealError);
+            }
           }
         }
       }
     }
-    
-    // Update template popularity
-    template.popularity = (template.popularity || 0) + 1;
-    await template.save();
-    
-    return { 
-      success: true, 
-      message: "Template imported successfully",
-      componentsAdded: addedComponents.length
-    };
+
+  console.log(`Import complete: ${mealsCreated} meals created, ${mealsUpdated} meals updated`);
+  return { 
+    success: true, 
+    message: "Template imported successfully",
+    componentsAdded: addedComponents.length,
+    mealsCreated,
+    mealsUpdated
+  };
   } catch (error) {
     console.error("Error importing template:", error);
     return { success: false, error: error.message };

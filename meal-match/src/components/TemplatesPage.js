@@ -8,7 +8,7 @@ import TemplateDetailModal from './modals/TemplateDetailModal';
 import ConfirmationModal from './ui/ConfirmationModal';
 import NotificationToast from './ui/NotificationToast';
 import useNotification from '@/hooks/useNotification';
-import { getTemplates, deleteTemplate, importTemplate } from '@/services/apiService';
+import { getTemplates, getTemplateById, deleteTemplate, importTemplate } from '@/services/apiService';
 
 // Sub-component for empty templates state
 const EmptyTemplatesView = ({ userId }) => (
@@ -103,9 +103,18 @@ export default function TemplatesPage({ userId, templates: initialTemplates }) {
   const handleImportTemplate = async (templateId) => {
     try {
       setIsLoading(true);
-      await importTemplate(templateId, userId);
-      showNotification('Template applied successfully', 'success');
-      router.push(`/dashboard/grid/${userId}`);
+      
+      // Import the template using our server action
+      const result = await importTemplate(templateId, userId);
+      
+      if (result.success) {
+        // Show a more detailed success message
+        const message = `Template applied successfully! Added ${result.componentsAdded} components, created ${result.mealsCreated} new meals, and updated ${result.mealsUpdated} existing meals.`;
+        showNotification(message, 'success');
+        router.push(`/dashboard/grid/${userId}`);
+      } else {
+        throw new Error(result.error || "Failed to apply template");
+      }
     } catch (error) {
       console.error('Error importing template:', error);
       showNotification('Failed to apply template', 'error');

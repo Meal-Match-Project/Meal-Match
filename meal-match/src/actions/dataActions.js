@@ -7,33 +7,61 @@ import User from "@/models/Users";
 
 export async function saveMealPlanData(userId, componentsData, mealsData) {
   try {
-    if (!userId) {
-      return { success: false, error: "User ID is required" };
-    }
-    
     await connect();
     
-    // Save components
-    if (componentsData && componentsData.length > 0) {
-      for (const comp of componentsData) {
-        if (comp._id) {
-          await Component.findByIdAndUpdate(comp._id, comp, { upsert: true });
-        } else {
-          comp.userId = userId;
-          await Component.create(comp);
-        }
+    // First, save all components
+    for (const component of componentsData) {
+      const componentData = { ...component, userId };
+      if (component._id) {
+        await Component.findByIdAndUpdate(component._id, componentData, { upsert: true });
+      } else {
+        componentData.userId = userId;
+        await Component.create(componentData);
       }
     }
-    
-    // Save meals
-    if (mealsData && mealsData.length > 0) {
-      for (const meal of mealsData) {
-        if (meal._id) {
-          await Meal.findByIdAndUpdate(meal._id, meal, { upsert: true });
+
+    // Then handle meals - with special handling for string IDs
+    for (const meal of mealsData) {
+      // Check if the meal has a string ID like "Wednesday-Breakfast"
+      const isStringId = meal._id && typeof meal._id === 'string' && 
+                        !meal._id.match(/^[0-9a-fA-F]{24}$/);
+      
+      // Create meal data without the ID field if it's a string ID
+      // Add required fields to ensure validation passes
+      const mealData = { 
+        ...meal, 
+        userId,
+        // Ensure required fields exist with defaults
+        favorite: meal.favorite || false,
+        name: meal.name || `${meal.day_of_week} ${meal.meal_type}`
+      };
+      
+      if (isStringId) {
+        // For string IDs, use the day_of_week and meal_type to find or create the meal
+        const existingMeal = await Meal.findOne({ 
+          userId, 
+          day_of_week: meal.day_of_week, 
+          meal_type: meal.meal_type,
+          date: meal.date
+        });
+        
+        if (existingMeal) {
+          // Remove the string ID before updating to prevent MongoDB errors
+          const { _id, ...mealDataWithoutId } = mealData;
+          
+          // Update existing meal - WITHOUT the string ID that would cause errors
+          await Meal.findByIdAndUpdate(existingMeal._id, mealDataWithoutId);
         } else {
-          meal.userId = userId;
-          await Meal.create(meal);
+          // Create new meal - don't include the string ID in the database record
+          const { _id, ...mealWithoutStringId } = mealData;
+          await Meal.create(mealWithoutStringId);
         }
+      } else if (meal._id) {
+        // Regular MongoDB ObjectId - use the normal update path
+        await Meal.findByIdAndUpdate(meal._id, mealData, { upsert: true });
+      } else {
+        // No ID at all - create a new meal
+        await Meal.create(mealData);
       }
     }
     

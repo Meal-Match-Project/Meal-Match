@@ -20,6 +20,8 @@ import useNotification from '@/hooks/useNotification';
 import useMealComponents from '@/hooks/useMealComponents';
 import useSaveData from '@/hooks/useSaveData';
 import useMealDragAndDrop from '@/hooks/useMealDragAndDrop';
+import useTemplateManagement from '@/hooks/useTemplateManagement';
+
 
 // Utils & Actions
 import { 
@@ -115,6 +117,26 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
     onSaveNeeded: markSaveNeeded
   });
 
+  // Template management hook
+  const { 
+    isSaveTemplateModalOpen: isTemplateSaveModalOpen,
+    setSaveTemplateModalOpen: setTemplateSaveModalOpen,
+    isSaving: isSavingTemplate,
+    handleSaveAsTemplate,
+    handleCreateTemplate 
+  } = useTemplateManagement({
+    userId,
+    // Filter meals to ONLY include current week meals
+    mealsData: getCurrentWeekMeals(mealsData),
+    componentsData,
+    onTemplateCreated: (template) => {
+      showNotification('Template saved successfully', 'success');
+    },
+    onError: (message) => {
+      showNotification(message, 'error');
+    }
+  });
+
   // Check if user has seen the tutorial
   useEffect(() => {
     const tutorialShown = localStorage.getItem(`tutorial-shown-${userId}`);
@@ -132,9 +154,72 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
     setModalOpen(true);
   };
 
+  //Save a template
+  const handleSaveTemplate = () => {
+    handleSaveAsTemplate();
+  };
+
   // Toggle sidebar
   const toggleSidebar = () => {
     setCompSidebarCollapsed(!compSidebarCollapsed);
+  };
+
+  const getCurrentWeekMeals = (allMeals) => {
+    // Get current date info
+    const today = new Date();
+    const startOfWeek = new Date(today);
+    const currentDay = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    startOfWeek.setDate(today.getDate() - currentDay); // Move to start of week (Sunday)
+    
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6); // End of week (Saturday)
+    
+    // Get day names for current week
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    
+    // Two approaches to filter:
+    
+    // 1. If meals have dates, filter by date range
+    const dateFilteredMeals = allMeals.filter(meal => {
+      if (meal.date) {
+        const mealDate = new Date(meal.date);
+        return mealDate >= startOfWeek && mealDate <= endOfWeek;
+      }
+      return false; // If no date, can't determine if it's current week
+    });
+    
+    // If we found meals with dates in current week, return those
+    if (dateFilteredMeals.length > 0) {
+      console.log(`Found ${dateFilteredMeals.length} meals for current week using date filtering`);
+      return dateFilteredMeals;
+    }
+    
+    // 2. If no dates or no matches, use a different approach - take only the most recent meal for each day/type
+    console.log("No meals found with date filtering, using most recent meals per day/type");
+    const uniqueMeals = {};
+    const uniqueMealsList = [];
+    
+    // Sort meals by createdAt if available (newest first)
+    const sortedMeals = [...allMeals].sort((a, b) => {
+      if (a.createdAt && b.createdAt) {
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      }
+      return 0;
+    });
+    
+    // Take only the most recent meal for each day/type combination
+    sortedMeals.forEach(meal => {
+      if (!meal.day_of_week || !meal.meal_type) return;
+      
+      const key = `${meal.day_of_week}-${meal.meal_type}`;
+      if (!uniqueMeals[key]) {
+        uniqueMeals[key] = true;
+        uniqueMealsList.push(meal);
+      }
+    });
+    
+    console.log(`Found ${uniqueMealsList.length} unique day/type meals`);
+    return uniqueMealsList;
   };
 
   // Quick add function
@@ -511,7 +596,7 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
   };
 
   // Handle template creation
-  const handleSaveAsTemplate = () => {
+  const handleCheckBeforeTemplateCreation = () => {
     // Check if there are any meals to save
     const hasContent = mealsData.some(meal => meal.components.length > 0 || meal.name);
     
@@ -521,37 +606,6 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
     }
     
     setSaveTemplateModalOpen(true);
-  };
-
-  const handleCreateTemplate = async (templateData) => {
-    try {
-      // Extract components data
-      const componentsToInclude = extractComponentsForTemplate(mealsData, componentsData);
-      
-      // Group meals by day
-      const daysArray = groupMealsByDayForTemplate(mealsData);
-      
-      // Create the template data structure
-      const fullTemplateData = {
-        ...templateData,
-        user_id: userId,
-        components_to_prepare: componentsToInclude,
-        days: daysArray
-      };
-      
-      // Save the template using server action
-      const result = await createTemplate(fullTemplateData);
-      
-      if (!result.success) {
-        throw new Error(result.error || "Failed to save template");
-      }
-      
-      setSaveTemplateModalOpen(false);
-      showNotification('Template saved successfully', 'success');
-    } catch (error) {
-      console.error('Error saving template:', error);
-      showNotification('Failed to save template: ' + error.message, 'error');
-    }
   };
 
   // Handle applying a template
@@ -697,7 +751,7 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
           </button>
           
           <button 
-            onClick={handleSaveAsTemplate}
+            onClick={handleCheckBeforeTemplateCreation}
             className="flex items-center bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white px-4 py-2 rounded-md shadow-md hover:shadow-lg transition-all duration-200"
             title="Save your current meal plan as a reusable template"
           >
@@ -815,12 +869,14 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
         userId={userId}
         existingMeal={mealsData.find(m => m._id === selectedMeal)}
       />
-      <SaveTemplateModal
-        isOpen={isSaveTemplateModalOpen}
-        onClose={() => setSaveTemplateModalOpen(false)}
-        onSave={handleCreateTemplate}
-        isLoading={isSaving}
-      />
+      {isTemplateSaveModalOpen && (
+        <SaveTemplateModal
+          isOpen={isTemplateSaveModalOpen}
+          onClose={() => setTemplateSaveModalOpen(false)}
+          onSave={handleCreateTemplate}
+          isSaving={isSavingTemplate}
+        />
+      )}
 
       {/* Notifications */}
       <NotificationToast 
