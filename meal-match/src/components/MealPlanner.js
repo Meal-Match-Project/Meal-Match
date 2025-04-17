@@ -42,14 +42,6 @@ import {
   groupMealsByDayForTemplate 
 } from '@/utils/templateUtils';
 
-
-// Prevent Hydration Error
-function ClientOnly({ children }) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  return mounted ? children : null;
-}
-
 export default function MealPlanner({ components = [], meals = [], favorites = [], userId, dayInfo = [] }) {
   // Initialize state from props
   const [favoritesData, setFavoritesData] = useState(favorites);
@@ -260,8 +252,6 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
               notes: mealData.notes || '',
               day_of_week: mealData.day_of_week
             },
-            // Add type field to match schema
-            type: 'meal'
           };
           
           await addFavorite(favoriteData);
@@ -742,59 +732,57 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
         </div>
       </div>
       
-      <ClientOnly>
-        <DndContext 
-          onDragStart={handleDragStart} 
-          onDragEnd={handleDragEnd}
-          accessibility={{
-            // This prevents the aria-describedby errors by using a more consistent ID strategy
-            announcements: {
-              onDragStart: ({ active }) => `Picked up ${active.id}`,
-              onDragOver: ({ active, over }) => over ? `Hovering over ${over.id}` : undefined,
-              onDragEnd: ({ active, over }) => over ? `Dropped ${active.id} onto ${over.id}` : `Dropped ${active.id}`,
-              onDragCancel: ({ active }) => `Cancelled dragging ${active.id}`
-            },
-            restoreFocus: true
-          }}
-        >
-          <div className="flex h-[calc(100vh-150px)] bg-gray-100 rounded-lg shadow-lg overflow-hidden">
-            {!compSidebarCollapsed && (
-              <div className="w-1/4 min-w-[250px] h-full">
-                <ComponentsSidebar
-                  components={componentsData}
-                  favorites={favoritesData}
-                  userId={userId}
-                  onAddComponent={handleAddComponent}
-                  className="h-full"
-                />
-              </div>
-            )}
-            
-            <div className={`${compSidebarCollapsed ? "w-full" : "w-3/4"} h-full`}>
-            <MealGrid
-              meals={mealsData}
-              components={componentsData}
-              onRemoveComponent={handleRemoveComponentFromMeal}
-              onAddMiniComponent={handleAddMiniComponent}
-              onMealClick={handleMealClick}
-              onClearMeal={handleClearMeal}
-              onMoveComponent={handleMoveComponent}
-              dayInfo={daysInfo}
-              isFullWidth={compSidebarCollapsed}
-              setSelectedComponent={(componentName) => {
-                const fullComponent = componentsData.find(c => c.name === componentName);
-                if (fullComponent) setSelectedComponent(fullComponent);
-              }}
-              setIsComponentModalOpen={setIsComponentModalOpen}
-              className="h-full"
-            />
+      <DndContext 
+        onDragStart={handleDragStart} 
+        onDragEnd={handleDragEnd}
+        accessibility={{
+          // This prevents the aria-describedby errors by using a more consistent ID strategy
+          announcements: {
+            onDragStart: ({ active }) => `Picked up ${active.id}`,
+            onDragOver: ({ active, over }) => over ? `Hovering over ${over.id}` : undefined,
+            onDragEnd: ({ active, over }) => over ? `Dropped ${active.id} onto ${over.id}` : `Dropped ${active.id}`,
+            onDragCancel: ({ active }) => `Cancelled dragging ${active.id}`
+          },
+          restoreFocus: true
+        }}
+      >
+        <div className="flex h-[calc(100vh-150px)] bg-gray-100 rounded-lg shadow-lg overflow-hidden">
+          {!compSidebarCollapsed && (
+            <div className="w-1/4 min-w-[250px] h-full">
+              <ComponentsSidebar
+                components={componentsData}
+                favorites={favoritesData}
+                userId={userId}
+                onAddComponent={handleAddComponent}
+                className="h-full"
+              />
             </div>
+          )}
+          
+          <div className={`${compSidebarCollapsed ? "w-full" : "w-3/4"} h-full`}>
+          <MealGrid
+            meals={mealsData}
+            components={componentsData}
+            onRemoveComponent={handleRemoveComponentFromMeal}
+            onAddMiniComponent={handleAddMiniComponent}
+            onMealClick={handleMealClick}
+            onClearMeal={handleClearMeal}
+            onMoveComponent={handleMoveComponent}
+            dayInfo={daysInfo}
+            isFullWidth={compSidebarCollapsed}
+            setSelectedComponent={(componentName) => {
+              const fullComponent = componentsData.find(c => c.name === componentName);
+              if (fullComponent) setSelectedComponent(fullComponent);
+            }}
+            setIsComponentModalOpen={setIsComponentModalOpen}
+            className="h-full"
+          />
           </div>
-          <DragOverlay>
-            {activeItem ? <DraggableItem id={activeItem} /> : null}
-          </DragOverlay>
-        </DndContext>
-      </ClientOnly>
+        </div>
+        <DragOverlay>
+          {activeItem ? <DraggableItem id={activeItem} /> : null}
+        </DragOverlay>
+      </DndContext>
 
       {/* AI Assistant Modal */}
       <AIAssistantModal

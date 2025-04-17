@@ -34,11 +34,11 @@ export default async function ComponentsPageWrapper({ params }) {
     const components = await getComponents(userId);
     
     return (
-        <div className="bg-gray-100 min-h-screen">
+        <>
             <LoggedInNav />
             <main className="relative">
                 <ComponentsPage userId={userId} components={components} />
             </main>
-        </div>
+        </>
     );
 }

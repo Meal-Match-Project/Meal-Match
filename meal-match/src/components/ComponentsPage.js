@@ -71,7 +71,7 @@ export default function ComponentsPage({ userId, components = [] }) {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-6 bg-gray-100 min-h-screen">
       <h1 className="text-2xl font-bold text-orange-600 mb-4">Components</h1>
       
       <div className="w-1/4 mx-auto bg-white rounded-lg shadow-md overflow-hidden">

@@ -5,6 +5,13 @@ import { mealHasContent } from '@/utils/mealUtils';
 
 /**
  * Custom hook to handle drag and drop operations for meal components
+ * @param {Object} options - Configuration options
+ * @param {Array} options.componentsData - Component data array
+ * @param {Function} options.setComponentsData - Function to update component data
+ * @param {Array} options.mealsData - Meal data array
+ * @param {Function} options.setMealsData - Function to update meal data
+ * @param {Function} options.onSaveNeeded - Function to call when changes need to be saved
+ * @returns {Object} - Drag and drop handlers and state
  */
 export default function useMealDragAndDrop({
   componentsData,
@@ -51,16 +58,17 @@ export default function useMealDragAndDrop({
     if (onSaveNeeded) onSaveNeeded();
   }, [setMealsData, onSaveNeeded]);
 
-  // Handle favorite meal drop - UPDATED to use drag event data
-  const handleFavoriteMealDrop = useCallback((event, targetMealId) => {
-    // Get data from the drag event
-    const dragData = event.active.data.current;
+  // Handle favorite meal drop
+  const handleFavoriteMealDrop = useCallback((favoriteMealId, targetMealId) => {
+    // Extract meal name from the id (remove 'meal-' prefix)
+    const mealName = favoriteMealId.replace('meal-', '');
     
-    // Ensure we have valid data
-    if (!dragData) return;
+    // Find the matching favorite meal object
+    const favMealObj = mealsData.find((m) => m.name === mealName);
+    if (!favMealObj) return;
     
-    // Extract meal data from the drag event
-    const { mealName, components = [], toppings = [], notes = '' } = dragData;
+    // Get all component names from the favorite meal
+    const componentNames = favMealObj.components || [];
     
     // First update the target meal to include all these components
     setMealsData((prev) => {
@@ -70,14 +78,14 @@ export default function useMealDragAndDrop({
               ...meal,
               components: [
                 ...meal.components,
-                ...components,
+                ...componentNames,
               ],
               toppings: [
-                ...meal.toppings || [],
-                ...toppings
+                ...meal.toppings,
+                ...(favMealObj.toppings || [])
               ],
-              name: mealName || meal.name,
-              notes: notes || meal.notes
+              name: favMealObj.name || meal.name,
+              notes: favMealObj.notes || meal.notes
             }
           : meal
       );
@@ -85,7 +93,7 @@ export default function useMealDragAndDrop({
     });
     
     // Then decrement the servings count for each component used
-    components.forEach((compName) => {
+    componentNames.forEach((compName) => {
       const compIndex = componentsData.findIndex(
         (comp) => comp.name === compName
       );
@@ -103,7 +111,7 @@ export default function useMealDragAndDrop({
     });
     
     if (onSaveNeeded) onSaveNeeded();
-  }, [componentsData, setComponentsData, setMealsData, onSaveNeeded]);
+  }, [componentsData, mealsData, setComponentsData, setMealsData, onSaveNeeded]);
 
   // Handle component drop
   const handleComponentDrop = useCallback((componentName, targetMealId) => {
@@ -147,7 +155,11 @@ export default function useMealDragAndDrop({
     return false;
   }, [componentsData, setComponentsData, setMealsData, onSaveNeeded]);
 
+<<<<<<< HEAD
   // Handle any drag end - UPDATED to pass the full event to handlers
+=======
+  // Handle any drag end
+>>>>>>> b7e49aa0582ec064d202331574ae583f6792e227
   const handleDragEnd = useCallback((event) => {
     const { active, over } = event;
     setActiveItem(null);
@@ -172,9 +184,8 @@ export default function useMealDragAndDrop({
     }
     
     // Case 1: If it's a favorite meal
-    if (draggedItemId.toString().startsWith('meal-')) {
-      // Pass the entire event to access drag data
-      handleFavoriteMealDrop(event, targetMealId);
+    if (draggedItemId.startsWith('meal-')) {
+      handleFavoriteMealDrop(draggedItemId, targetMealId);
       return;
     }
     

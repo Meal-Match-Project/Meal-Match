@@ -67,7 +67,7 @@ export default async function Favorites({ params }) {
   const { favoriteMeals, favoriteComponents, weeklyComponents } = await getFavorites(userId);
   
   return(
-    <div className="bg-gray-100 min-h-screen">
+    <>
       <LoggedInNav />
       <main className="relative">
         <FavoritesPage 
@@ -77,6 +77,6 @@ export default async function Favorites({ params }) {
           weeklyComponents={weeklyComponents}
         />
       </main>
-    </div>
+    </>
   );
 }

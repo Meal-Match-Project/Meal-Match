@@ -68,7 +68,7 @@ export default function IngredientsPage({ userId, ingredients = [] }) {
   const handleSearch = (value) => setSearchTerm(value);
 
   return (
-    <div className="p-6">
+    <div className="p-6 bg-gray-100 min-h-screen">
       <h1 className="text-2xl font-bold text-orange-600 mb-4">
         {activeTab === 'to-buy' ? 'Shopping List' : 'Ingredient Inventory'}
       </h1>
