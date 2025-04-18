@@ -208,19 +208,17 @@ export async function updateUserPassword(userId, passwordData) {
     if (!user) {
       return { success: false, error: 'User not found' };
     }
+
     
     // Compare current password
-    const isPasswordCorrect = await bcrypt.compare(passwordData.currentPassword, user.password);
+    const isPasswordCorrect = await user.comparePassword(passwordData.currentPassword);
     if (!isPasswordCorrect) {
       return { success: false, error: 'Current password is incorrect' };
     }
-    
-    // Hash new password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(passwordData.newPassword, salt);
+  
     
     // Update password
-    user.password = hashedPassword;
+    user.password = passwordData.newPassword;
     await user.save();
     
     return { success: true, message: 'Password updated successfully' };

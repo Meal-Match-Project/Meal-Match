@@ -188,6 +188,13 @@ export default function Profile({ userId }) {
     }));
   };
 
+  const passwordsMatch = () => {
+    // Only show feedback if confirm password field has content
+    if (!passwordData.confirmPassword) return null;
+    
+    return passwordData.newPassword === passwordData.confirmPassword;
+  };
+
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -581,13 +588,39 @@ export default function Profile({ userId }) {
               
               <div>
                 <label className="block text-sm font-medium text-gray-700">Confirm New Password</label>
-                <input
-                  type="password"
-                  value={passwordData.confirmPassword}
-                  onChange={(e) => setPasswordData({...passwordData, confirmPassword: e.target.value})}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-orange-500 focus:border-orange-500"
-                  required
-                />
+                <div className="relative">
+                  <input
+                    type="password"
+                    value={passwordData.confirmPassword}
+                    onChange={(e) => setPasswordData({...passwordData, confirmPassword: e.target.value})}
+                    className={`mt-1 block w-full border ${
+                      passwordData.confirmPassword
+                        ? passwordsMatch()
+                          ? "border-green-500"
+                          : "border-red-500"
+                        : "border-gray-300"
+                    } rounded-md shadow-sm py-2 px-3 pr-10 focus:outline-none focus:ring-orange-500 focus:border-orange-500`}
+                    required
+                  />
+                  
+                  {/* Show match/mismatch icon */}
+                  {passwordData.confirmPassword && (
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pt-1">
+                      {passwordsMatch() ? (
+                        <CheckCircle className="h-5 w-5 text-green-500" />
+                      ) : (
+                        <AlertTriangle className="h-5 w-5 text-red-500" />
+                      )}
+                    </div>
+                  )}
+                </div>
+                
+                {/* Show helper text */}
+                {passwordData.confirmPassword && !passwordsMatch() && (
+                  <p className="mt-1 text-sm text-red-600">
+                    Passwords don't match
+                  </p>
+                )}
               </div>
               
               <div className="flex justify-end space-x-3 pt-2">
@@ -604,7 +637,11 @@ export default function Profile({ userId }) {
                 </button>
                 <button
                   type="submit"
-                  className="bg-orange-500 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-orange-600"
+                  disabled={passwordData.confirmPassword && !passwordsMatch()}
+                  className={`bg-orange-500 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white 
+                    ${passwordData.confirmPassword && !passwordsMatch() 
+                      ? 'opacity-60 cursor-not-allowed' 
+                      : 'hover:bg-orange-600'}`}
                 >
                   Update Password
                 </button>

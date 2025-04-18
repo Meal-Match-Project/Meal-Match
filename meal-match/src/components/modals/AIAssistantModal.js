@@ -679,17 +679,6 @@ export default function AIAssistantModal({ userId, isOpen, onClose, onAddMealToP
           </div>
         )}
       </div>
-      {isLoading && activeTab === 'template' && (
-        <div className="absolute inset-0 bg-black bg-opacity-20 flex flex-col items-center justify-center z-20">
-          <div className="bg-white p-6 rounded-lg shadow-lg text-center">
-            <Loader2 className="h-10 w-10 animate-spin text-orange-500 mx-auto mb-3" />
-            <h3 className="font-medium text-lg">Adding Components</h3>
-            <p className="text-gray-600 mt-1">
-              Please wait while we add the components to your collection...
-            </p>
-          </div>
-        </div>
-      )}
       {successMessage && (
         <div className="fixed bottom-4 right-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded shadow-md flex items-center z-50">
             <span className="check-icon mr-2">✓</span>

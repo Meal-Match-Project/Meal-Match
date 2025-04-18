@@ -25,6 +25,7 @@ const UserSchema = new mongoose.Schema({
         type: String,
         trim: true,
         required: [true, 'Please provide a password'],
+        select: false,
         minlength: 6,
     },
     dietary_preferences: {type: String, required: false},

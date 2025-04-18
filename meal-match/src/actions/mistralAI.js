@@ -148,7 +148,7 @@ export async function getMealRecommendations(userId) {
       
       It's extremely important you return valid JSON. Do not include any Markdown formatting, just return the raw JSON.
     `;
-    
+    console.log(prompt);
     // Get recommendations from Mistral
     const response = await mistral.chat.complete({
       model: "mistral-large-latest",
@@ -423,7 +423,7 @@ export async function generateWeeklyTemplate(userId, options = {}) {
 
       It's extremely important you return valid JSON. Do not include any Markdown formatting, just return the raw JSON.
     `;
-    
+    console.log(prompt);
     // Get template from Mistral
     const response = await mistral.chat.complete({
       model: "mistral-small-latest",
@@ -431,6 +431,8 @@ export async function generateWeeklyTemplate(userId, options = {}) {
       response_format: { type: 'json_object' },
       temperature: 0.7
     });
+
+    
 
     // Extract and parse the JSON, handling cases where the API returns Markdown
     const responseContent = response.choices[0].message.content;
