@@ -187,8 +187,8 @@ export default function AIAssistantModal({ userId, isOpen, onClose, onAddMealToP
         onSetSuggestions(formattedSuggestions);
       }
     }
-  }, [weeklyTemplate]);
-
+  }, [weeklyTemplate, onSetSuggestions]);
+  
   useEffect(() => {
     if (recommendations && recommendations.length > 0 && onSetSuggestions) {
       // Only run this effect if we have recommendations that haven't been processed yet
@@ -211,7 +211,7 @@ export default function AIAssistantModal({ userId, isOpen, onClose, onAddMealToP
         onSetSuggestions(formattedSuggestions);
       }
     }
-  }, [recommendations]);
+  }, [recommendations, onSetSuggestions]);
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || isLoading) return;

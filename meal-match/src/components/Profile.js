@@ -618,7 +618,7 @@ export default function Profile({ userId }) {
                 {/* Show helper text */}
                 {passwordData.confirmPassword && !passwordsMatch() && (
                   <p className="mt-1 text-sm text-red-600">
-                    Passwords don't match
+                    Passwords don&apos;t match
                   </p>
                 )}
               </div>
