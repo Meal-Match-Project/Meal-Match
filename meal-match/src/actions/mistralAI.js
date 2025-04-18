@@ -108,6 +108,11 @@ export async function getMealRecommendations(userId) {
   try {
     // Get the user's component data and dietary info
     const userData = await getUserComponentData(userId);
+
+    const availableComponents = userData.components.filter(component => 
+      component.servings > 0
+    );
+    
     
     // Create a prompt for the AI
     const prompt = `
@@ -116,7 +121,7 @@ export async function getMealRecommendations(userId) {
       Consider their dietary preferences and allergies.
       
       Available Components:
-      ${JSON.stringify(userData.components, null, 2)}
+      ${JSON.stringify(availableComponents)}
       
       User Dietary Preferences: ${userData.userDietaryInfo.preferences.join(', ') || 'None specified'}
       User Allergies: ${userData.userDietaryInfo.allergies.join(', ') || 'None specified'}
