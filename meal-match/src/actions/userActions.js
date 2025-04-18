@@ -1,6 +1,7 @@
 'use server';
 
 import connect from "@/lib/mongodb";
+import bcrypt from "bcryptjs";
 import User from "@/models/Users";
 import UserProfile from "@/models/UserProfile";
 
@@ -183,5 +184,48 @@ export async function updateUserProfilePic(userId, profileData) {
   } catch (error) {
     console.error("Error updating user profile picture:", error);
     return { success: false, error: error.message };
+  }
+}
+
+export async function updateUserPassword(userId, passwordData) {
+  try {
+    // Validate inputs
+    if (!userId) {
+      return { success: false, error: 'User ID is required' };
+    }
+    
+    if (!passwordData.currentPassword || !passwordData.newPassword) {
+      return { success: false, error: 'Current password and new password are required' };
+    }
+    
+    // Minimum password length check
+    if (passwordData.newPassword.length < 8) {
+      return { success: false, error: 'Password must be at least 8 characters long' };
+    }
+    
+    // Get user data to verify current password
+    const user = await User.findById(userId).select('+password');
+    if (!user) {
+      return { success: false, error: 'User not found' };
+    }
+    
+    // Compare current password
+    const isPasswordCorrect = await bcrypt.compare(passwordData.currentPassword, user.password);
+    if (!isPasswordCorrect) {
+      return { success: false, error: 'Current password is incorrect' };
+    }
+    
+    // Hash new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(passwordData.newPassword, salt);
+    
+    // Update password
+    user.password = hashedPassword;
+    await user.save();
+    
+    return { success: true, message: 'Password updated successfully' };
+  } catch (error) {
+    console.error('Error updating password:', error);
+    return { success: false, error: error.message || 'Failed to update password' };
   }
 }

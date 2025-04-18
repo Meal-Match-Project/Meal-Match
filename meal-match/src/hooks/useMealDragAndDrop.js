@@ -57,7 +57,12 @@ export default function useMealDragAndDrop({
     const dragData = event.active.data.current;
     
     // Ensure we have valid data
-    if (!dragData) return;
+    if (!dragData) {
+      console.error("No drag data found in the event");
+      return;
+    }
+    
+    console.log("Dropping with data:", dragData);
     
     // Extract meal data from the drag event
     const { mealName, components = [], toppings = [], notes = '' } = dragData;
@@ -99,6 +104,8 @@ export default function useMealDragAndDrop({
           };
           return updated;
         });
+      } else {
+        console.warn(`Component ${compName} not found or has no servings available`);
       }
     });
     
@@ -192,8 +199,8 @@ export default function useMealDragAndDrop({
       return;
     }
     
-    // Case 1: If it's a favorite meal
-    if (draggedItemId.toString().startsWith('meal-')) {
+    // Case 1: If it's a favorite meal or suggested meal
+    if (draggedItemId.toString().startsWith('meal-') || draggedItemId.toString().startsWith('suggestion-')) {
       // Pass the entire event to access drag data
       handleFavoriteMealDrop(event, targetMealId);
       return;

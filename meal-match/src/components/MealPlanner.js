@@ -38,11 +38,6 @@ import {
 // Meal Utilities
 import { findMealSlot } from '@/utils/mealUtils';
 
-// Template Utilities 
-import { 
-  extractComponentsForTemplate, 
-  groupMealsByDayForTemplate 
-} from '@/utils/templateUtils';
 
 
 // Prevent Hydration Error
@@ -71,6 +66,9 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
   const [isTemplateImporting, setIsTemplateImporting] = useState(false);
   const [selectedComponent, setSelectedComponent] = useState(null);
   const [isComponentModalOpen, setIsComponentModalOpen] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState([]);
+  
+
 
 
 
@@ -116,6 +114,68 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
     setMealsData,
     onSaveNeeded: markSaveNeeded
   });
+
+  useEffect(() => {
+    console.log('[MealPlanner] Initial meals data:', meals);
+    console.log(`[MealPlanner] Loaded ${meals.length} meals`);
+    
+    // Group meals by day for better visibility
+    const mealsByDay = {};
+    meals.forEach(meal => {
+      const day = meal.day_of_week || 'unassigned';
+      if (!mealsByDay[day]) mealsByDay[day] = [];
+      mealsByDay[day].push(meal);
+    });
+    console.log('[MealPlanner] Meals grouped by day:', mealsByDay);
+  }, []); 
+
+  useEffect(() => {
+    if (meals.length > 0) {
+      // Make sure all meals have proper meal_type set
+      const processedMeals = meals.map(meal => ({
+        ...meal,
+        // Ensure meal_type is properly set if missing
+        meal_type: meal.meal_type || meal._id.split('-').pop()
+      }));
+      
+      setMealsData(processedMeals);
+    }
+  }, [meals]);
+
+  // Function to filter current week's meals to pass off to template creation hook
+  const getCurrentWeekMeals = () => {
+    console.log("Getting current week meals with total meals:", mealsData.length);
+    
+    // Create a deep copy of meals to prevent reference issues
+    const currentWeekMeals = [];
+    
+    daysInfo.forEach(day => {
+      const dayMeals = mealsData.filter(meal => 
+        meal.day_of_week === day.name && 
+        meal.userId === userId
+      );
+      
+      // Only add non-empty meals with deep copying of components
+      dayMeals.forEach(meal => {
+        // Check if there are actually components to copy
+        const hasComponents = Array.isArray(meal.components) && meal.components.length > 0;
+        const hasToppings = Array.isArray(meal.toppings) && meal.toppings.length > 0;
+        
+        if (hasComponents || hasToppings || (meal.name && meal.name.trim() !== '')) {
+          // Create deep copy of meal to prevent reference issues
+          currentWeekMeals.push({
+            ...meal,
+            // Ensure components is always an array
+            components: hasComponents ? [...meal.components] : [],
+            toppings: hasToppings ? [...meal.toppings] : []
+          });
+        }
+      });
+    });
+    
+    console.log(`Filtered ${currentWeekMeals.length} meals for template creation`);
+    return currentWeekMeals;
+  };
 
   // Template management hook
   const { 
@@ -164,63 +224,6 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
     setCompSidebarCollapsed(!compSidebarCollapsed);
   };
 
-  const getCurrentWeekMeals = (allMeals) => {
-    // Get current date info
-    const today = new Date();
-    const startOfWeek = new Date(today);
-    const currentDay = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
-    startOfWeek.setDate(today.getDate() - currentDay); // Move to start of week (Sunday)
-    
-    const endOfWeek = new Date(startOfWeek);
-    endOfWeek.setDate(startOfWeek.getDate() + 6); // End of week (Saturday)
-    
-    // Get day names for current week
-    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    
-    // Two approaches to filter:
-    
-    // 1. If meals have dates, filter by date range
-    const dateFilteredMeals = allMeals.filter(meal => {
-      if (meal.date) {
-        const mealDate = new Date(meal.date);
-        return mealDate >= startOfWeek && mealDate <= endOfWeek;
-      }
-      return false; // If no date, can't determine if it's current week
-    });
-    
-    // If we found meals with dates in current week, return those
-    if (dateFilteredMeals.length > 0) {
-      console.log(`Found ${dateFilteredMeals.length} meals for current week using date filtering`);
-      return dateFilteredMeals;
-    }
-    
-    // 2. If no dates or no matches, use a different approach - take only the most recent meal for each day/type
-    console.log("No meals found with date filtering, using most recent meals per day/type");
-    const uniqueMeals = {};
-    const uniqueMealsList = [];
-    
-    // Sort meals by createdAt if available (newest first)
-    const sortedMeals = [...allMeals].sort((a, b) => {
-      if (a.createdAt && b.createdAt) {
-        return new Date(b.createdAt) - new Date(a.createdAt);
-      }
-      return 0;
-    });
-    
-    // Take only the most recent meal for each day/type combination
-    sortedMeals.forEach(meal => {
-      if (!meal.day_of_week || !meal.meal_type) return;
-      
-      const key = `${meal.day_of_week}-${meal.meal_type}`;
-      if (!uniqueMeals[key]) {
-        uniqueMeals[key] = true;
-        uniqueMealsList.push(meal);
-      }
-    });
-    
-    console.log(`Found ${uniqueMealsList.length} unique day/type meals`);
-    return uniqueMealsList;
-  };
 
   // Quick add function
   const handleQuickAddComponent = async () => {
@@ -251,6 +254,25 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
     } catch (error) {
       console.error("Error adding quick component:", error);
       showNotification("Failed to add component", "error");
+    }
+  };
+
+  const handleSetSuggestions = (newSuggestions) => {
+    console.log('Setting new suggestions:', newSuggestions);
+    
+    if (newSuggestions && newSuggestions.length > 0) {
+      // Get the type of these suggestions
+      const incomingType = newSuggestions[0].type || 'unknown';
+      
+      setAiSuggestions(prevSuggestions => {
+        // Remove previous suggestions of the same type to avoid duplicates
+        const filteredSuggestions = prevSuggestions.filter(
+          suggestion => suggestion.type !== incomingType
+        );
+        
+        // Combine with new suggestions
+        return [...filteredSuggestions, ...newSuggestions];
+      });
     }
   };
 
@@ -332,7 +354,6 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
       
       const mealId = savedMealData.meal._id;
     
-      // 2. Handle favorite status in the favorites collection
       try {
         if (isFavorite) {
           const favoriteData = {
@@ -349,7 +370,17 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
             type: 'meal'
           };
           
-          await addFavorite(favoriteData);
+          const response = await addFavorite(favoriteData);
+          
+          // Add the new favorite to local state if API call was successful
+          if (response && response.success) {
+            // Add the newly created favorite to favoritesData
+            setFavoritesData(prev => [...prev, {
+              _id: response.favorite._id, // Use ID from API response
+              meal: favoriteData.meal,
+              type: 'meal'
+            }]);
+          }
         } else {
           await removeFavorite(userId, mealId);
           // Remove from local favoritesData
@@ -598,14 +629,15 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
   // Handle template creation
   const handleCheckBeforeTemplateCreation = () => {
     // Check if there are any meals to save
-    const hasContent = mealsData.some(meal => meal.components.length > 0 || meal.name);
+    const hasContent = mealsData.some(meal => meal.components?.length > 0 || meal.name);
     
     if (!hasContent) {
       showNotification("Please add some meals to your week before saving as a template.", "error");
       return;
     }
     
-    setSaveTemplateModalOpen(true);
+    // Use the function from the hook, not the local state setter
+    setTemplateSaveModalOpen(true);
   };
 
   // Handle applying a template
@@ -614,9 +646,8 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
       console.error("Invalid template format");
       return;
     }
-  
+
     try {
-      // Show loading state if needed
       setIsTemplateImporting(true);
       
       if (template._id) {
@@ -624,77 +655,96 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
         const result = await importTemplate(template._id, userId);
         
         if (result.success) {
-          // Update components based on server response
+          // REPLACE existing mealsData with updated meals from server
+          if (result.updatedMeals && result.updatedMeals.length > 0) {
+            console.log(`Received ${result.updatedMeals.length} updated meals from server`);
+            
+            // Replace the entire mealsData state with the updated data
+            setMealsData(result.updatedMeals);
+            
+            // Update component servings based on the imported meals
+            const componentsUsed = {};
+            
+            // Count all components used in template's meals
+            result.updatedMeals.forEach(meal => {
+              if (meal.components && Array.isArray(meal.components)) {
+                meal.components.forEach(comp => {
+                  componentsUsed[comp] = (componentsUsed[comp] || 0) + 1;
+                });
+              }
+            });
+            
+            // Update component servings
+            setComponentsData(prevComponents => 
+              prevComponents.map(comp => {
+                const usageCount = componentsUsed[comp.name] || 0;
+                return {
+                  ...comp,
+                  servings: Math.max(0, comp.servings - usageCount)
+                };
+              })
+            );
+          }
+
           showNotification(`Template applied successfully! Added ${result.componentsAdded} components.`, "success");
           markSaveNeeded();
         } else {
           throw new Error(result.error || "Failed to apply template");
         }
       } else {
-        // Case 2: Direct template from AI - add components directly to state
-        const newComponents = [];
-        let componentsAdded = 0;
+        // Case 2: Direct template from AI - handle components addition
+        const componentsAdded = [];
         
-        // Process each component in the AI-generated template
-        for (const component of template.components_to_prepare) {
-          // Check if component already exists
-          const existingComponent = componentsData.find(c => 
-            c.name.toLowerCase() === component.name.toLowerCase()
-          );
-          
-          if (existingComponent) {
-            // Update existing component's servings
-            setComponentsData(prev => 
-              prev.map(c => c.name.toLowerCase() === component.name.toLowerCase() 
-                ? { ...c, servings: c.servings + (component.servings || 3) }
-                : c
-              )
-            );
-            componentsAdded++;
-          } else {
-            // Prepare new component with required fields
-            const newComponent = {
-              name: component.name,
-              category: component.category || 'uncategorized',
-              servings: component.servings || 3,
-              prep_time: component.prep_time || 15,
-              storage_life: component.storage_life || 5,
-              ingredients: component.ingredients || [],
-              notes: component.notes || '',
-              favorite: false,
-              userId
-            };
-            
-            // Add to array of new components to be added
-            newComponents.push(newComponent);
-          }
-        }
-        
-        // If we have new components, add them all at once
-        if (newComponents.length > 0) {
-          try {
-            // Add each component to the database
-            for (const comp of newComponents) {
-              const result = await addComponent(comp);
-              if (result.success) {
-                componentsAdded++;
-                setComponentsData(prev => [...prev, result.component]);
+        // Add each component from the template to the user's collection
+        if (template.components_to_prepare && template.components_to_prepare.length > 0) {
+          for (const comp of template.components_to_prepare) {
+            try {
+              // Add component only if it doesn't already exist
+              if (!componentsData.some(existing => existing.name === comp.name)) {
+                const newCompData = {
+                  name: comp.name,
+                  servings: comp.servings || 3,
+                  prep_time: comp.prep_time || 15,
+                  // Map base_ingredients to ingredients
+                  ingredients: comp.base_ingredients || comp.ingredients || [],
+                  notes: comp.notes || comp.description || '',
+                  storage_life: comp.storage_life || '',
+                  dietary_restrictions: '',
+                  favorite: false,
+                  calories: 0,
+                  protein: 0,
+                  carbs: 0,
+                  fat: 0,
+                  userId
+                };
+                
+                const result = await addComponent(newCompData);
+                if (result.success) {
+                  componentsAdded.push(result.component);
+                }
               }
+            } catch (err) {
+              console.error(`Failed to add component ${comp.name}:`, err);
             }
-          } catch (error) {
-            console.error("Error adding components:", error);
-            throw new Error("Failed to add some components to your collection");
+          }
+          
+          // Update components in state
+          if (componentsAdded.length > 0) {
+            setComponentsData(prev => [...prev, ...componentsAdded]);
+            showNotification(`Added ${componentsAdded.length} new components to your collection`, "success");
+            markSaveNeeded();
+          } else {
+            showNotification("No new components were added", "info");
           }
         }
-        
-        showNotification(`Template applied successfully! Added ${componentsAdded} components.`, "success");
-        markSaveNeeded();
       }
     } catch (error) {
       console.error("Error applying template:", error);
       showNotification("Error applying template: " + error.message, "error");
     } finally {
       setIsTemplateImporting(false);
+      // Close the AI modal after processing is complete
+      setIsAIModalOpen(false);  
     }
   };
 
@@ -711,7 +761,18 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
       );
     }
     
-    // If it's a component from sidebar or favorite meal
+    // If it's a suggestion meal
+    if (id.toString().startsWith('suggestion-')) {
+      // Extract just the meal name after the prefix
+      const mealName = id.replace('suggestion-', '');
+      return (
+        <div className="p-2 max-w-[200px] bg-orange-500 text-white font-bold rounded-lg shadow-md cursor-grabbing z-50">
+          {mealName}
+        </div>
+      );
+    }
+    
+    // If it's a favorite meal
     if (id.startsWith('meal-')) {
       // It's a favorite meal - extract name after 'meal-' prefix
       const mealName = id.replace('meal-', '');
@@ -817,6 +878,7 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
                 <ComponentsSidebar
                   components={componentsData}
                   favorites={favoritesData}
+                  suggestions={aiSuggestions} // Pass suggestions here
                   userId={userId}
                   onAddComponent={handleAddComponent}
                   className="h-full"
@@ -857,6 +919,7 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
         onClose={() => setIsAIModalOpen(false)}
         onAddMealToPlanner={handleAddRecommendedMeal}
         onApplyTemplate={handleApplyTemplate}
+        onSetSuggestions={handleSetSuggestions} // Add this prop
       />
       
       <SaveMealModal
@@ -873,7 +936,11 @@ export default function MealPlanner({ components = [], meals = [], favorites = [
         <SaveTemplateModal
           isOpen={isTemplateSaveModalOpen}
           onClose={() => setTemplateSaveModalOpen(false)}
-          onSave={handleCreateTemplate}
+          onSave={(templateData) => {
+            // Pass just the template metadata to handleCreateTemplate
+            // The server action will fetch the fresh meal data
+            return handleCreateTemplate(templateData);
+          }}
           isSaving={isSavingTemplate}
         />
       )}

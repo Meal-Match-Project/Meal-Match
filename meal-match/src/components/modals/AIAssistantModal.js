@@ -139,7 +139,7 @@ function FormattedMessage({ content }) {
   );
 }
 
-export default function AIAssistantModal({ userId, isOpen, onClose, onAddMealToPlanner, onApplyTemplate }) {
+export default function AIAssistantModal({ userId, isOpen, onClose, onAddMealToPlanner, onApplyTemplate, onSetSuggestions }) {
   const [chatHistory, setChatHistory] = useState([]);
   const [generalChatHistory, setGeneralChatHistory] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
@@ -156,6 +156,9 @@ export default function AIAssistantModal({ userId, isOpen, onClose, onAddMealToP
   
   const messagesEndRef = useRef(null);
   const modalContentRef = useRef(null);
+
+  const lastProcessedRecommendationsRef = useRef('');
+  const lastProcessedTemplateRef = useRef('');
   
   // Scroll to bottom of chat when new messages appear
   useEffect(() => {
@@ -164,7 +167,51 @@ export default function AIAssistantModal({ userId, isOpen, onClose, onAddMealToP
     }
   }, [chatHistory, generalChatHistory]);
 
-  
+  // Update parent component with example meals if available
+  useEffect(() => {
+    if (weeklyTemplate && weeklyTemplate.example_meals && onSetSuggestions) {
+      const templateId = weeklyTemplate.name || '';
+      
+      // Only process if this template hasn't been processed yet
+      if (templateId !== lastProcessedTemplateRef.current) {
+        lastProcessedTemplateRef.current = templateId;
+        
+        // Format the suggestions in a consistent way
+        const formattedSuggestions = weeklyTemplate.example_meals.map(meal => ({
+          name: meal.name,
+          components: meal.components,
+          description: meal.description,
+          type: 'template'
+        }));
+        
+        onSetSuggestions(formattedSuggestions);
+      }
+    }
+  }, [weeklyTemplate]);
+
+  useEffect(() => {
+    if (recommendations && recommendations.length > 0 && onSetSuggestions) {
+      // Only run this effect if we have recommendations that haven't been processed yet
+      const recommendationIds = recommendations.map(rec => rec.mealName).join(',');
+      
+      // Store the last processed batch in a ref to prevent infinite loops
+      if (recommendationIds !== lastProcessedRecommendationsRef.current) {
+        lastProcessedRecommendationsRef.current = recommendationIds;
+        
+        // Format the meal recommendations to match the expected structure
+        const formattedSuggestions = recommendations.map(meal => ({
+          name: meal.mealName,
+          components: meal.components || [],
+          description: meal.preparationInstructions || '',
+          additionalIngredients: meal.additionalIngredients || [],
+          type: 'recommendation'
+        }));
+        
+        // Send these suggestions to the parent component
+        onSetSuggestions(formattedSuggestions);
+      }
+    }
+  }, [recommendations]);
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || isLoading) return;
@@ -249,6 +296,21 @@ export default function AIAssistantModal({ userId, isOpen, onClose, onAddMealToP
       if (response.recommendations && response.recommendations.length > 0) {
         setRecommendations(response.recommendations);
         
+        // Format and send recommendations to the sidebar
+        const formattedSuggestions = response.recommendations.map(meal => ({
+          name: meal.mealName,
+          components: meal.components || [],
+          description: meal.preparationInstructions || '',
+          additionalIngredients: meal.additionalIngredients || [],
+          type: 'recommendation',
+          nutritionalInfo: meal.nutritionalInfo || {}
+        }));
+        
+        // Update parent component with suggestions
+        if (onSetSuggestions) {
+          onSetSuggestions(formattedSuggestions);
+        }
+        
         // Add this as a message in the chat
         setChatHistory([
           { 
@@ -291,63 +353,68 @@ export default function AIAssistantModal({ userId, isOpen, onClose, onAddMealToP
     }
   };
 
-  const handleAddMealToPlanner = (meal, dayOfWeek, mealType) => {
-    setIsLoading(true);
+  // const handleAddMealToPlanner = (meal, dayOfWeek, mealType) => {
+  //   setIsLoading(true);
     
-    try {
-      onAddMealToPlanner({
-        ...meal,
-        dayOfWeek,
-        mealType: mealType.charAt(0).toUpperCase() + mealType.slice(1)
-      });
+  //   try {
+  //     onAddMealToPlanner({
+  //       ...meal,
+  //       dayOfWeek,
+  //       mealType: mealType.charAt(0).toUpperCase() + mealType.slice(1)
+  //     });
       
-      // Show success message
-      setSuccessMessage(`Added ${meal.mealName} to ${dayOfWeek} ${mealType}`);
-      setTimeout(() => {
-        setSuccessMessage(null);
-      }, 3000);
+  //     // Show success message
+  //     setSuccessMessage(`Added ${meal.mealName} to ${dayOfWeek} ${mealType}`);
+  //     setTimeout(() => {
+  //       setSuccessMessage(null);
+  //     }, 3000);
       
-      setIsLoading(false);
-    } catch (err) {
-      setIsLoading(false);
-      setError(`Failed to add meal: ${err.message}`);
-    }
-  };
+  //     setIsLoading(false);
+  //   } catch (err) {
+  //     setIsLoading(false);
+  //     setError(`Failed to add meal: ${err.message}`);
+  //   }
+  // };
 
   const handleApplyTemplate = () => {
     if (weeklyTemplate) {
       setIsLoading(true);
+      
       try {
+        // First step: Apply the template
         onApplyTemplate(weeklyTemplate);
         
-        // Show a success message
+        // Show success message
         setSuccessMessage(`Added ${weeklyTemplate.components_to_prepare.length} components to your collection`);
         
-        // Only close the modal after template is applied
+        // Update chat history with meal ideas
+        if (weeklyTemplate && weeklyTemplate.example_meals) {
+          setChatHistory([
+            { 
+              role: 'assistant', 
+              content: `I've added ${weeklyTemplate.components_to_prepare.length} components to your collection. Here are some meal ideas you can make with them:`, 
+              data: { 
+                recommendations: weeklyTemplate.example_meals.map(meal => ({
+                  mealName: meal.name,
+                  components: meal.components,
+                  preparationInstructions: meal.description
+                })) 
+              } 
+            }
+          ]);
+        }
+        
+        // Keep loading state active during animation
         setTimeout(() => {
           setIsLoading(false);
-        }, 500);
+          onClose(); // Close the modal after success
+        }, 2000); // Slightly longer time to ensure loading animation is visible
+        
       } catch (err) {
+        console.error("Template application error:", err);
         setIsLoading(false);
         setError(`Failed to apply template: ${err.message}`);
       }
-    }
-    // Add this after successfully applying a template and showing success message
-    if (weeklyTemplate && weeklyTemplate.example_meals) {
-        setChatHistory([
-        { 
-            role: 'assistant', 
-            content: `I've added ${weeklyTemplate.components_to_prepare.length} components to your collection. Here are some meal ideas you can make with them:`, 
-            data: { 
-            recommendations: weeklyTemplate.example_meals.map(meal => ({
-                mealName: meal.name,
-                components: meal.components,
-                preparationInstructions: meal.description
-            })) 
-            } 
-        }
-        ]);
-        
     }
   };
 
@@ -442,35 +509,9 @@ export default function AIAssistantModal({ userId, isOpen, onClose, onAddMealToP
                     <div key={index} className="border rounded-lg p-4">
                       <div className="flex justify-between items-start">
                         <h4 className="text-lg font-semibold">{meal.mealName}</h4>
-                        <div className="relative group">
-                          <button className="bg-orange-500 hover:bg-orange-600 text-white p-1 rounded flex items-center">
-                            <Plus className="h-4 w-4 mr-1" />
-                            <span className="text-sm">Add</span>
-                            <ChevronDown className="h-3 w-3 ml-1" />
-                          </button>
-                          <div className="absolute right-0 mt-1 hidden group-hover:block bg-white shadow-lg rounded-md p-2 z-10 w-48">
-                            <div className="text-sm font-semibold mb-1">Add to:</div>
-                            {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => (
-                              <div key={day} className="py-1">
-                                <div className="font-medium text-xs text-gray-500">{day}</div>
-                                <div className="flex space-x-2 mt-1">
-                                  <button 
-                                    onClick={() => handleAddMealToPlanner(meal, day, 'lunch')}
-                                    className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded"
-                                  >
-                                    Lunch
-                                  </button>
-                                  <button 
-                                    onClick={() => handleAddMealToPlanner(meal, day, 'dinner')}
-                                    className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded"
-                                  >
-                                    Dinner
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
+                        <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                          Available in sidebar
+                        </span>
                       </div>
                       
                       <div className="mt-3 space-y-2">
@@ -638,6 +679,17 @@ export default function AIAssistantModal({ userId, isOpen, onClose, onAddMealToP
           </div>
         )}
       </div>
+      {isLoading && activeTab === 'template' && (
+        <div className="absolute inset-0 bg-black bg-opacity-20 flex flex-col items-center justify-center z-20">
+          <div className="bg-white p-6 rounded-lg shadow-lg text-center">
+            <Loader2 className="h-10 w-10 animate-spin text-orange-500 mx-auto mb-3" />
+            <h3 className="font-medium text-lg">Adding Components</h3>
+            <p className="text-gray-600 mt-1">
+              Please wait while we add the components to your collection...
+            </p>
+          </div>
+        </div>
+      )}
       {successMessage && (
         <div className="fixed bottom-4 right-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded shadow-md flex items-center z-50">
             <span className="check-icon mr-2">✓</span>

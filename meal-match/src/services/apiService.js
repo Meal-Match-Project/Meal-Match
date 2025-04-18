@@ -17,7 +17,8 @@ import {
     getUserProfile,
     updateUserProfile,
     getUserProfilePic,
-    updateUserProfilePic
+    updateUserProfilePic,
+    updateUserPassword,
   } from '@/actions/userActions';
   
   // Import template actions
@@ -77,6 +78,7 @@ import {
     updateUserProfile,
     getUserProfilePic,
     updateUserProfilePic,
+    updateUserPassword,
     
     // Template actions
     getTemplates,

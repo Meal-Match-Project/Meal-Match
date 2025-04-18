@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { X, Save, Loader2 } from 'lucide-react';
 
 export default function SaveTemplateModal({ isOpen, onClose, onSave, isLoading }) {
+  
   const [templateData, setTemplateData] = useState({
     name: '',
     description: '',

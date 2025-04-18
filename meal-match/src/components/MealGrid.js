@@ -66,8 +66,12 @@ export default function MealGrid({
                   // Find the meal document that matches this day and meal type
                   const meal = meals.find(
                     m => m.day_of_week === day.name && m.meal_type === mealType
-                  ) || { _id: `${day.name}-${mealType}`, components: [], toppings: [] };
-                  
+                  ) || { 
+                    _id: `${day.name}-${mealType}`, 
+                    components: [], 
+                    toppings: [],
+                    meal_type: mealType // Explicitly set meal_type for new/empty meals
+                  };
                   // Filter out components that don't exist anymore in the master list
                   const validComponents = (meal.components || []).filter(
                     comp => validComponentNames.includes(comp)

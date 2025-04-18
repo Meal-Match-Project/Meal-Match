@@ -94,7 +94,50 @@ export async function fetchUserData(userId) {
     
     // If no or insufficient meals found for current week, initialize them
     if (userMeals.length < 21) {
-      // ...existing code...
+      console.log(`Found only ${userMeals.length} meals, initializing missing meals`);
+      
+      const mealTypes = ['Breakfast', 'Lunch', 'Dinner'];
+      const bulkOps = [];
+      
+      // Check which meal slots need to be created
+      for (const day of nextSevenDays) {
+        for (const mealType of mealTypes) {
+          // Check if this meal already exists
+          const exists = userMeals.some(
+            meal => 
+              meal.day_of_week === day.name && 
+              meal.meal_type === mealType
+          );
+          
+          if (!exists) {
+            // Add this meal to database
+            bulkOps.push({
+              userId: userId,
+              name: `${day.name} ${mealType}`,
+              day_of_week: day.name,
+              meal_type: mealType,
+              components: [],
+              toppings: [],
+              notes: '',
+              date: new Date(day.date),
+              favorite: false
+            });
+          }
+        }
+      }
+      
+      // Insert any new meals that don't already exist
+      if (bulkOps.length > 0) {
+        console.log(`Creating ${bulkOps.length} new meal slots`);
+        await Meal.insertMany(bulkOps);
+        
+        // Re-fetch all meals after creation
+        userMeals.push(...await Meal.find({
+          _id: { $nin: userMeals.map(m => m._id) },
+          userId: userId,
+          date: { $gte: today, $lt: nextWeek }
+        }).lean());
+      }
     }
 
     // Fetch components and favorites

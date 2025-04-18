@@ -96,10 +96,59 @@ function DraggableMeal({ meal }) {
   );
 }
 
+function DraggableSuggestion({ suggestion, availableComponents }) {
+  const { attributes, listeners, setNodeRef } = useDraggable({ 
+    id: `suggestion-${suggestion.name}`,
+    data: {
+      type: 'suggestion-meal',
+      mealName: suggestion.name,
+      components: suggestion.components || [],
+      toppings: suggestion.additionalIngredients || [], // Pass additional ingredients as toppings
+      notes: suggestion.description || '',
+      additionalInfo: suggestion.nutritionalInfo || {}
+    }
+  });
+
+  // Check if any components are missing
+  const missingComponents = suggestion.components.filter(comp => !availableComponents.includes(comp));
+  const isMissing = missingComponents.length > 0;
+
+  return (
+    <div
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      className={`p-2 rounded shadow-sm ${isMissing ? 'bg-gray-200 cursor-not-allowed opacity-60' : 'bg-white hover:bg-orange-50 cursor-grab'} truncate mb-2`}
+      style={{ touchAction: 'none' }}
+      title={isMissing 
+        ? `Missing: ${missingComponents.join(', ')}` 
+        : suggestion.description || `Components: ${suggestion.components.join(', ')}`
+      }
+    >
+      <div className="flex justify-between items-center">
+        <span className="truncate">{suggestion.name}</span>
+        <div className="flex items-center gap-1">
+          {suggestion.type === 'recommendation' ? (
+            <span className="text-xs bg-green-100 text-green-800 px-1 rounded">meal</span>
+          ) : (
+            <span className="text-xs bg-blue-100 text-blue-800 px-1 rounded">template</span>
+          )}
+          {isMissing && (
+            <span className="text-xs text-red-600">
+              {missingComponents.length} missing
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ComponentsSidebar({ 
   components, 
   favorites, 
   userId, 
+  suggestions = [],
   onAddComponent, 
   className = "" 
 }) {
@@ -114,9 +163,19 @@ export default function ComponentsSidebar({
   );
   
   // Extract component names from available components
+  // Get available component names for filtering suggestions
   const availableComponentNames = useMemo(() => 
-    availableComponents.map(comp => comp.name),
-    [availableComponents]
+    components.filter(comp => comp.servings > 0).map(comp => comp.name),
+    [components]
+  );
+  
+  // Filter suggestions to only show those where all components are available
+  const availableSuggestions = useMemo(() => 
+    suggestions.filter(suggestion => 
+      suggestion.components &&
+      suggestion.components.every(component => availableComponentNames.includes(component))
+    ),
+    [suggestions, availableComponentNames]
   );
   
   const fullyAvailableMeals = useMemo(() => 
@@ -139,13 +198,12 @@ export default function ComponentsSidebar({
   const filteredComponents = useMemo(() => 
     components
       .filter(component => 
-        component.name.toLowerCase().includes(searchTerm.toLowerCase())
+        // Only include components that match search AND have servings > 0
+        component.name.toLowerCase().includes(searchTerm.toLowerCase()) && 
+        component.servings > 0
       )
       .sort((a, b) => {
-        // Sort by availability (servings > 0) first, then alphabetically
-        if ((a.servings > 0) !== (b.servings > 0)) {
-          return a.servings > 0 ? -1 : 1;
-        }
+        // Just sort alphabetically since all components now have servings > 0
         return a.name.localeCompare(b.name);
       }),
     [components, searchTerm]
@@ -215,6 +273,40 @@ export default function ComponentsSidebar({
             ) : (
               <div className="text-white text-sm italic p-2">
                 {searchTerm ? "No matching components" : "No components available"}
+              </div>
+            )}
+          </div>
+        </Accordion>
+        
+        { /* AI Suggestions */ }
+        <Accordion
+          title="AI Suggestions"
+          isOpen={openSections.suggestions}
+          onToggle={() => toggleSection('suggestions')}
+        >
+          <div className="space-y-1">
+            {suggestions.length > 0 ? (
+              <>
+                {suggestions
+                  .sort((a, b) => {
+                    // Sort available items first, then by type
+                    if ((a.components.every(c => availableComponentNames.includes(c))) !==
+                        (b.components.every(c => availableComponentNames.includes(c)))) {
+                      return a.components.every(c => availableComponentNames.includes(c)) ? -1 : 1;
+                    }
+                    return 0;
+                  })
+                  .map((suggestion, index) => (
+                    <DraggableSuggestion 
+                      key={`suggestion-${suggestion.type}-${index}`} 
+                      suggestion={suggestion} 
+                      availableComponents={availableComponentNames}
+                    />
+                  ))}
+              </>
+            ) : (
+              <div className="text-white text-sm italic p-2">
+                No meal suggestions available yet
               </div>
             )}
           </div>

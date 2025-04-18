@@ -1,14 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Camera, User, Mail, Pizza, AlertTriangle, Save, CheckCircle, X } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Camera, User, Mail, Pizza, AlertTriangle, Save, CheckCircle, X, Lock } from 'lucide-react';
 import Image from 'next/image';
 import EmptyProfile from '../../public/empty_profile.png';
 import { 
   getUserProfile, 
   getUserProfilePic, 
   updateUserProfile, 
-  updateUserProfilePic 
+  updateUserProfilePic,
+  updateUserPassword,
 } from '@/services/apiService';
 
 const DIETARY_PREFERENCES = [
@@ -59,6 +60,14 @@ export default function Profile({ userId }) {
   const [success, setSuccess] = useState(false);
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [passwordModified, setPasswordModified] = useState(false);
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [passwordError, setPasswordError] = useState(null);
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
 
   // Fetch user data on component mount
   useEffect(() => {
@@ -227,6 +236,51 @@ export default function Profile({ userId }) {
     }
   };
 
+  // Add this function with your other handlers
+  const handlePasswordReset = async (e) => {
+    e.preventDefault();
+    setPasswordError(null);
+    setPasswordSuccess(false);
+    
+    try {
+      // Validate passwords match
+      if (passwordData.newPassword !== passwordData.confirmPassword) {
+        setPasswordError("New passwords don't match");
+        return;
+      }
+      
+      // Validate password length/complexity
+      if (passwordData.newPassword.length < 8) {
+        setPasswordError("Password must be at least 8 characters long");
+        return;
+      }
+      
+      // Call API to verify current password and update to new password
+      const response = await updateUserPassword(userId, {
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword
+      });
+      
+      if (!response.success) {
+        throw new Error(response.error || "Failed to update password");
+      }
+      
+      // Reset form and show success
+      setPasswordSuccess(true);
+      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      
+      // Close modal after delay
+      setTimeout(() => {
+        setPasswordSuccess(false);
+        setIsPasswordModalOpen(false);
+      }, 2000);
+      
+    } catch (err) {
+      console.error('Error updating password:', err);
+      setPasswordError(err.message || 'Current password is incorrect or there was a server error');
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -298,13 +352,23 @@ export default function Profile({ userId }) {
             <p className="text-gray-500">{profile.email}</p>
             
             {!isEditing && (
-              <button
-                onClick={() => setIsEditing(true)}
-                className="mt-6 bg-orange-500 hover:bg-orange-600 text-white py-2 px-6 rounded-md shadow transition flex items-center"
-              >
-                <User size={18} className="mr-2" />
-                Edit Profile
-              </button>
+              <>
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="mt-6 bg-orange-500 hover:bg-orange-600 text-white py-2 px-6 rounded-md shadow transition flex items-center"
+                >
+                  <User size={18} className="mr-2" />
+                  Edit Profile
+                </button>
+                
+                <button
+                  onClick={() => setIsPasswordModalOpen(true)}
+                  className="mt-4 bg-white border border-orange-500 hover:bg-orange-50 text-orange-500 py-2 px-6 rounded-md shadow transition flex items-center"
+                >
+                  <Lock size={18} className="mr-2" />
+                  Reset Password
+                </button>
+              </>
             )}
           </div>
           
@@ -455,6 +519,100 @@ export default function Profile({ userId }) {
           </div>
         </div>
       </div>
+      {/* Password Reset Modal */}
+      {isPasswordModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-gray-800">Reset Password</h2>
+              <button 
+                onClick={() => {
+                  setIsPasswordModalOpen(false);
+                  setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                  setPasswordError(null);
+                  setPasswordSuccess(false);
+                }} 
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            
+            {passwordError && (
+              <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-3 mb-4">
+                <div className="flex items-center">
+                  <AlertTriangle className="h-5 w-5 mr-2" />
+                  <p>{passwordError}</p>
+                </div>
+              </div>
+            )}
+            
+            {passwordSuccess && (
+              <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-3 mb-4">
+                <div className="flex items-center">
+                  <CheckCircle className="h-5 w-5 mr-2" />
+                  <p>Password updated successfully!</p>
+                </div>
+              </div>
+            )}
+            
+            <form onSubmit={handlePasswordReset} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Current Password</label>
+                <input
+                  type="password"
+                  value={passwordData.currentPassword}
+                  onChange={(e) => setPasswordData({...passwordData, currentPassword: e.target.value})}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-orange-500 focus:border-orange-500"
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700">New Password</label>
+                <input
+                  type="password"
+                  value={passwordData.newPassword}
+                  onChange={(e) => setPasswordData({...passwordData, newPassword: e.target.value})}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-orange-500 focus:border-orange-500"
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Confirm New Password</label>
+                <input
+                  type="password"
+                  value={passwordData.confirmPassword}
+                  onChange={(e) => setPasswordData({...passwordData, confirmPassword: e.target.value})}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-orange-500 focus:border-orange-500"
+                  required
+                />
+              </div>
+              
+              <div className="flex justify-end space-x-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsPasswordModalOpen(false);
+                    setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                    setPasswordError(null);
+                  }}
+                  className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="bg-orange-500 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-orange-600"
+                >
+                  Update Password
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

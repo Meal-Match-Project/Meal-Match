@@ -9,25 +9,85 @@
  * @returns {Array} Components data for the template
  */
 export function extractComponentsForTemplate(meals, componentsData) {
-    // Get unique set of used component names
-    const usedComponents = new Set();
-    meals.forEach(meal => {
-      if (meal.components) {
-        meal.components.forEach(comp => usedComponents.add(comp));
-      }
+  console.log("Extracting components from meals:", meals.length, "with components data:", componentsData.length);
+  
+  // DEBUG: Add more detailed inspection of components
+  if (meals.length > 0) {
+    const firstMeal = meals[0];
+    console.log("First meal structure:", {
+      name: firstMeal.name,
+      hasComponents: Boolean(firstMeal.components),
+      isArray: Array.isArray(firstMeal.components),
+      componentsLength: Array.isArray(firstMeal.components) ? firstMeal.components.length : 0,
+      componentsType: typeof firstMeal.components,
+      componentsContent: JSON.stringify(firstMeal.components).substring(0, 100)
     });
-    
-    // Map component names to full component data
-    return componentsData
-      .filter(comp => usedComponents.has(comp.name))
-      .map(comp => ({
-        name: comp.name,
-        description: comp.notes || '',
-        prep_time: comp.prep_time || 30,
-        storage_life: 7, // Default value
-        base_ingredients: comp.ingredients || []
-      }));
   }
+  
+  // Create a Set to track unique component names/ids across all meals
+  const uniqueComponentNames = new Set();
+  
+  // First collect all unique component identifiers from meals
+  meals.forEach(meal => {
+    // Ensure components is an array before trying to iterate
+    if (Array.isArray(meal.components) && meal.components.length > 0) {
+      meal.components.forEach(comp => {
+        // Handle different possible formats
+        if (typeof comp === 'string') {
+          // If component is a string name or ID
+          uniqueComponentNames.add(comp);
+        } else if (comp && typeof comp === 'object') {
+          // If component is an object, try to get the name or ID
+          if (comp.name) {
+            uniqueComponentNames.add(comp.name);
+          } else if (comp._id) {
+            // Try to find the component by ID in componentsData
+            const matchedComponent = componentsData.find(c => c._id === comp._id);
+            if (matchedComponent && matchedComponent.name) {
+              uniqueComponentNames.add(matchedComponent.name);
+            }
+          }
+        }
+      });
+    }
+  });
+  
+  console.log(`Found ${uniqueComponentNames.size} unique component names`);
+  
+  // Map the names to the full component data
+  const templateComponents = [];
+  
+  uniqueComponentNames.forEach(compName => {
+    // Find matching component in componentsData
+    const componentData = componentsData.find(c => c.name === compName);
+    
+    if (componentData) {
+      // Format for template's component schema
+      templateComponents.push({
+        name: componentData.name,
+        description: componentData.notes || "",
+        prep_time: componentData.prep_time || 0,
+        storage_life: componentData.storage_life || 0,
+        base_ingredients: Array.isArray(componentData.ingredients) 
+          ? [...componentData.ingredients] 
+          : []
+      });
+    } else {
+      // Fallback if component data not found
+      console.warn(`Component data not found for: ${compName}`);
+      templateComponents.push({
+        name: compName,
+        description: "",
+        prep_time: 0,
+        storage_life: 0,
+        base_ingredients: []
+      });
+    }
+  });
+  
+  console.log(`Created ${templateComponents.length} template components`);
+  return templateComponents;
+}
   
 /**
  * Group meals by day of week for template format

@@ -91,7 +91,6 @@ export async function fetchUserMealData(userId, startDate = new Date()) {
     const components = await Component.find({ userId }).lean();
     
     // Fetch meals
-    // You can add date filtering logic here if needed
     const meals = await Meal.find({ userId }).lean();
     
     return { 
@@ -104,6 +103,36 @@ export async function fetchUserMealData(userId, startDate = new Date()) {
     };
   } catch (error) {
     console.error("Error fetching user meal data:", error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function fetchWeekMeals(userId) {
+  try {
+    if (!userId) {
+      return { success: false, error: "User ID is required" };
+    }
+    
+    await connect();
+    
+    // Get today's date
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Get all meals for this user
+    // We're not filtering by date in the query because MongoDB date queries
+    // can be tricky with timezones - we'll filter in memory instead
+    const meals = await Meal.find({ userId }).lean();
+    
+    // Convert MongoDB objects for safe JSON serialization
+    const serializedMeals = JSON.parse(JSON.stringify(meals));
+    
+    return { 
+      success: true, 
+      meals: serializedMeals
+    };
+  } catch (error) {
+    console.error("Error fetching week's meals:", error);
     return { success: false, error: error.message };
   }
 }
