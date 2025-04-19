@@ -8,8 +8,8 @@ const UserSchema = new mongoose.Schema({
         type: String,
         trim: true,
         required : [true, 'Please provide a username'],
-        maxlength: 32
-
+        maxlength: 32,
+        unique: true  
     },
     email: {
         type: String,

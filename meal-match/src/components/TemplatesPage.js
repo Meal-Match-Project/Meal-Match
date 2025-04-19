@@ -100,6 +100,22 @@ export default function TemplatesPage({ userId, templates: initialTemplates }) {
     setShowModal(true);
   };
 
+  const handleTemplateUpdate = (updatedTemplate) => {
+    // Update templates list in state
+    setTemplates(prevTemplates => 
+      prevTemplates.map(t => 
+        t._id === updatedTemplate._id ? updatedTemplate : t
+      )
+    );
+    
+    // Update selected template if it's currently displayed
+    if (selectedTemplate && selectedTemplate._id === updatedTemplate._id) {
+      setSelectedTemplate(updatedTemplate);
+    }
+    
+    showNotification('Template updated successfully', 'success');
+  };
+
   const handleImportTemplate = async (templateId) => {
     try {
       setIsLoading(true);
@@ -183,11 +199,13 @@ export default function TemplatesPage({ userId, templates: initialTemplates }) {
         {showModal && selectedTemplate && (
           <TemplateDetailModal
             template={selectedTemplate}
+            userId={userId}
             onClose={() => setShowModal(false)}
             onImport={() => handleImportTemplate(selectedTemplate._id)}
             onDelete={selectedTemplate.user_id === userId ? 
                     () => handleDeleteTemplate(selectedTemplate._id) : 
                     undefined}
+            onUpdate={handleTemplateUpdate}
           />
         )}
 

@@ -15,10 +15,16 @@ export async function registerUser(userData) {
     await connect();
     const { username, email, password, dietary_preferences, allergies } = userData;
 
-    // Check if user exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return { success: false, error: "User already exists" };
+    // Check if email exists
+    const existingEmail = await User.findOne({ email });
+    if (existingEmail) {
+      return { success: false, error: "email_exists", message: "This email is already registered" };
+    }
+
+    // Check if username exists
+    const existingUsername = await User.findOne({ username });
+    if (existingUsername) {
+      return { success: false, error: "username_exists", message: "This username is already taken" };
     }
 
     // Create new user
@@ -41,7 +47,18 @@ export async function registerUser(userData) {
     };
   } catch (error) {
     console.error("Error registering user:", error);
-    return { success: false, error: error.message };
+    
+    // Handle MongoDB duplicate key errors
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern)[0];
+      return { 
+        success: false, 
+        error: `${field}_exists`, 
+        message: `This ${field} is already in use` 
+      };
+    }
+    
+    return { success: false, error: "registration_failed", message: error.message };
   }
 }
 

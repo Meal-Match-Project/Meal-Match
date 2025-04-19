@@ -62,25 +62,35 @@ const Register = () => {
   // Clear errors when form changes
   useEffect(() => {
     if (Object.keys(errors).length > 0) {
-      // Only clear errors for fields that have changed
+      const fieldsToCheck = ['username', 'email', 'password'];
       const newErrors = { ...errors };
-      Object.keys(formData).forEach(key => {
-        if (newErrors[key] && 
-            ((Array.isArray(formData[key]) && formData[key].length > 0) || 
-             (!Array.isArray(formData[key]) && formData[key] !== ""))) {
-          // For email, only clear if it's valid or we haven't submitted yet
-          if (key === 'email' && !hasSubmitted) {
-            delete newErrors[key];
-          } else if (key === 'email' && validations.email.test(formData[key])) {
-            delete newErrors[key];
-          } else if (key !== 'email') {
-            delete newErrors[key];
+      
+      fieldsToCheck.forEach(field => {
+        // Only clear validation errors when field is changed, not existence errors
+        if (newErrors[field] && 
+            formData[field] !== "" &&
+            !newErrors[field].includes("already") && // Don't clear "already exists" errors on simple changes
+            !newErrors[field].includes("already taken")) { 
+          
+          // For email, check validity
+          if (field === 'email') {
+            if (validations.email.test(formData[field])) {
+              delete newErrors[field];
+            }
+          } 
+          // For other fields, just check if they're not empty
+          else {
+            delete newErrors[field];
           }
         }
       });
-      setErrors(newErrors);
+      
+      // Only update if errors actually changed
+      if (JSON.stringify(errors) !== JSON.stringify(newErrors)) {
+        setErrors(newErrors);
+      }
     }
-  }, [formData, hasSubmitted, errors, validations.email]);
+  }, [formData.username, formData.email, formData.password]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -184,7 +194,7 @@ const Register = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSuccessMessage("");
-    setHasSubmitted(true); // Mark that the form has been submitted
+    setHasSubmitted(true);
     
     // Validate all fields before submission
     if (!validateForm()) {
@@ -202,16 +212,29 @@ const Register = () => {
         dietary_preferences: formData.dietary_preferences.join(', '),
         allergies: formData.allergies.join(', ')
       };
-  
+    
       // Use the NextAuth register endpoint
       const response = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(apiFormData),
       });
-  
-      const data = await response.json();
+    
+      // Check for empty response
+      const text = await response.text();
+      if (!text) {
+        throw new Error("Server returned empty response");
+      }
       
+      // Parse JSON response - handle parsing separately to catch JSON errors
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (parseError) {
+        console.error("JSON parse error:", parseError);
+        throw new Error("Invalid server response format");
+      }
+    
       if (response.ok) {
         setSuccessMessage("Account created successfully! Signing you in...");
   
@@ -252,25 +275,21 @@ const Register = () => {
           }
         }, 2000); // Added 2-second delay before login attempt
       } else {
+        // Clear any previous errors first
+        setErrors({});
+        
         // Handle specific API error responses
-        if (data.error === "Email already in use") {
-          setErrors(prev => ({ 
-            ...prev, 
-            email: "A user with this email already exists" 
-          }));
+        if (data.error === "email_exists") {
+          setErrors({ email: "This email is already registered. Please use a different email." });
+        } else if (data.error === "username_exists") {
+          setErrors({ username: "This username is already taken. Please choose a different one." });
         } else {
-          setErrors(prev => ({ 
-            ...prev, 
-            general: data.error || "Failed to register. Please try again." 
-          }));
+          setErrors({ general: data.message || "Failed to register. Please try again." });
         }
       }
     } catch (error) {
       console.error("Registration error:", error);
-      setErrors(prev => ({ 
-        ...prev, 
-        general: "An error occurred while registering. Please try again later." 
-      }));
+      setErrors({ general: "An error occurred while registering. Please try again later." });
     } finally {
       setIsSubmitting(false);
     }

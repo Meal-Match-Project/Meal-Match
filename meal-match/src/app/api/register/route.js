@@ -5,72 +5,57 @@ import bcrypt from "bcryptjs";
 
 export async function POST(request) {
   try {
-    const body = await request.json();
-    const { username, email, password, dietary_preferences, allergies } = body;
+    const { email, password, username, dietary_preferences, allergies } = await request.json();
     
-    console.log("Registration attempt for:", email);
+    await connect();
     
-    // Validate input
-    if (!username || !email || !password) {
+    // Check if email exists
+    const userFoundByEmail = await User.findOne({ email });
+    if (userFoundByEmail) {
       return NextResponse.json(
-        { success: false, error: "Missing required fields" },
+        { error: "email_exists", message: "This email is already registered" }, 
         { status: 400 }
       );
     }
     
-    // Connect to database
-    await connect();
-    
-    // Check if user already exists
-    const existingUser = await User.findOne({ 
-      email: { $regex: new RegExp(`^${email}$`, 'i') } 
-    });
-    
-    if (existingUser) {
-      console.log("Email already in use:", email);
+    // Check if username exists
+    const userFoundByUsername = await User.findOne({ username });
+    if (userFoundByUsername) {
       return NextResponse.json(
-        { success: false, error: "Email already in use" },
-        { status: 409 }
+        { error: "username_exists", message: "This username is already taken" }, 
+        { status: 400 }
       );
     }
     
     
-    
-    // Create new user
-    const newUser = new User({
+    const user = new User({
       username,
       email,
       password,
-      dietary_preferences: dietary_preferences || "",
-      allergies: allergies || "",
-      meals: [],
-      created_at: new Date(),
+      dietary_preferences,
+      allergies,
     });
     
-    // Save user to database
-    console.log("Saving user to database...");
-    await newUser.save();
-    // After saving the user:
-    console.log("User saved successfully with ID:", newUser._id);
-
-    // Add verification check
-    const verifyUser = await User.findById(newUser._id);
-
+    const savedUser = await user.save();
     
-    // For debugging: Log raw password length to compare with auth flow
-    console.log("Original password length:", password.length);
-    
-    // Return success without sensitive info
-    return NextResponse.json({
-      success: true,
-      userId: newUser._id.toString(),
-      message: "User registered successfully",
-    });
-    
-  } catch (error) {
+    return NextResponse.json({ 
+      success: true, 
+      userId: savedUser._id.toString() 
+    }, { status: 201 });
+  }
+  catch(error) {
     console.error("Registration error:", error);
+    
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern)[0];
+      return NextResponse.json(
+        { error: `${field}_exists`, message: `This ${field} is already in use` }, 
+        { status: 400 }
+      );
+    }
+    
     return NextResponse.json(
-      { success: false, error: "Registration failed" },
+      { error: "registration_failed", message: error.message }, 
       { status: 500 }
     );
   }

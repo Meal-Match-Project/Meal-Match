@@ -188,7 +188,7 @@ export default function AIAssistantModal({ userId, isOpen, onClose, onAddMealToP
       }
     }
   }, [weeklyTemplate, onSetSuggestions]);
-  
+
   useEffect(() => {
     if (recommendations && recommendations.length > 0 && onSetSuggestions) {
       // Only run this effect if we have recommendations that haven't been processed yet
@@ -497,7 +497,7 @@ export default function AIAssistantModal({ userId, isOpen, onClose, onAddMealToP
             <div>
               <span className="mb-4 flex justify-between">
                 <h3 className="text-xl font-semibold mb-4">Meal Recommendations</h3>
-                <button onClick={getMealSuggestions} className="bg-orange-500 hover:bg-orange-600 text-white p-2 rounded flex items-center"><RotateCcw className="h-4 w-4 mr-2"/>Refresh</button>
+                {recommendations.length > 0 && <button onClick={getMealSuggestions} className="bg-orange-500 hover:bg-orange-600 text-white p-2 rounded flex items-center"><RotateCcw className="h-4 w-4 mr-2"/>Refresh</button>}
               </span>
               {isLoading ? (
                 <div className="flex justify-center py-10">
