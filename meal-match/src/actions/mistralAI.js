@@ -316,7 +316,7 @@ export async function generateWeeklyTemplate(userId, options = {}) {
       Ensure the components are practical, easy to prepare, and that the example meal ideas make sense. When possible, design components that utilize the user's already available ingredients: ${formattedIngredients || 'None specified'}
       
       Draw from the examples below and from your own knowledge of meal prep and planning.
-      Examples of components include:
+      I have given you some examples below. This is a start, but is by no means an exhaustive list, so feel free to be creative and use your culinary expertise to help you come up with new and interesting ideas..
 
       -------
       🍗 Proteins
@@ -384,8 +384,6 @@ export async function generateWeeklyTemplate(userId, options = {}) {
 
       🥣 Sauces & Dressings
       Lemon-Tahini Sauce
-
-      Chimichurri
 
       Peanut or Satay Sauce
 
