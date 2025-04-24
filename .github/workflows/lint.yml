@@ -2,9 +2,9 @@ name: Lint Check
 
 on:
   push:
-    branches: [nextjs]
+    branches: [nextjs, main]
   pull_request:
-    branches: [nextjs]
+    branches: [nextjs, main]
   workflow_dispatch:
 
 jobs:
