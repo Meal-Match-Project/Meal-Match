@@ -44,7 +44,7 @@ With built-in AI, Meal Match also provides intelligent meal suggestions based on
 
 - **Jake Salz** - Product Owner
 - **Zachary Bonagura** - Scrum Master
-- **Inah Lee, Patrick Kola, Shashank Garg** - Developers
+- **Inah Lee, Patrick Kola, Shashank Garg** - Full-stack Developers
 
 ## Contact
 - Email: sddfoodies@gmail.com
